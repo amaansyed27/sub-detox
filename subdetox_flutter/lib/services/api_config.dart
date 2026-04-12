@@ -1,9 +1,34 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
+  static const String backendMode = String.fromEnvironment(
+    'BACKEND_MODE',
+    defaultValue: 'functions-emulator',
+  );
+
+  static const String backendBaseUrl = String.fromEnvironment(
+    'BACKEND_BASE_URL',
+    defaultValue: '',
+  );
+
   static const String projectId = String.fromEnvironment(
     'FIREBASE_PROJECT_ID',
     defaultValue: 'subdetox-20260412-8514',
+  );
+
+  static const int fastApiLocalPort = int.fromEnvironment(
+    'FASTAPI_LOCAL_PORT',
+    defaultValue: 8000,
+  );
+
+  static const String localApiHostOverride = String.fromEnvironment(
+    'LOCAL_API_HOST',
+    defaultValue: '',
+  );
+
+  static const String cloudRunUrl = String.fromEnvironment(
+    'CLOUD_RUN_URL',
+    defaultValue: '',
   );
 
   static const bool useEmulator = bool.fromEnvironment(
@@ -14,6 +39,10 @@ class ApiConfig {
   static String get _host {
     if (kIsWeb) {
       return '127.0.0.1';
+    }
+
+    if (localApiHostOverride.isNotEmpty) {
+      return localApiHostOverride;
     }
 
     switch (defaultTargetPlatform) {
@@ -36,7 +65,34 @@ class ApiConfig {
     return Uri.parse('https://asia-south1-$projectId.cloudfunctions.net/api$path');
   }
 
-  static Uri _uri(String path) => useEmulator ? _emulatorUri(path) : _cloudUri(path);
+  static Uri _fastApiLocalUri(String path) {
+    return Uri.parse('http://$_host:$fastApiLocalPort/api$path');
+  }
+
+  static Uri _fastApiCloudUri(String path) {
+    if (cloudRunUrl.isNotEmpty) {
+      return Uri.parse('${cloudRunUrl.replaceAll(RegExp(r'/+$'), '')}/api$path');
+    }
+    if (backendBaseUrl.isNotEmpty) {
+      return Uri.parse('${backendBaseUrl.replaceAll(RegExp(r'/+$'), '')}/api$path');
+    }
+    return _cloudUri(path);
+  }
+
+  static Uri _uri(String path) {
+    switch (backendMode) {
+      case 'functions-emulator':
+        return _emulatorUri(path);
+      case 'functions-cloud':
+        return _cloudUri(path);
+      case 'fastapi-local':
+        return _fastApiLocalUri(path);
+      case 'fastapi-cloud':
+        return _fastApiCloudUri(path);
+      default:
+        return useEmulator ? _emulatorUri(path) : _fastApiCloudUri(path);
+    }
+  }
 
   static Uri get analyzeTransactionsUri => _uri('/analyze-transactions');
 
