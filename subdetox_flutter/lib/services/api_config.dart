@@ -40,6 +40,8 @@ class ApiConfig {
 
   static Uri get analyzeTransactionsUri => _uri('/analyze-transactions');
 
+  static Uri get latestAnalysisUri => _uri('/analysis/latest');
+
   static Uri get revokeMandateUri => _uri('/revoke-mandate');
 
   static Uri get mockAaDataUri => _uri('/mock-aa-data');

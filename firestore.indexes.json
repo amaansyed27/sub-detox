@@ -23,6 +23,20 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "estimatedMonthlyAmount",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "detected_subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "resolved",
           "order": "ASCENDING"
         },

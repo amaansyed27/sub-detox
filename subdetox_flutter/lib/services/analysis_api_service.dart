@@ -8,6 +8,28 @@ import 'api_config.dart';
 class AnalysisApiService {
   const AnalysisApiService();
 
+  Future<AnalyzeTransactionsResponse?> fetchLatestAnalysis(String idToken) async {
+    final response = await http.get(
+      ApiConfig.latestAnalysisUri,
+      headers: ApiConfig.authHeaders(idToken),
+    );
+
+    if (response.statusCode == 404) {
+      return null;
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return AnalyzeTransactionsResponse.fromJson(decoded);
+    }
+
+    throw AnalysisApiException(
+      'Failed to fetch latest analysis. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
   Future<AnalyzeTransactionsResponse> analyzeTransactions(String idToken) async {
     final response = await http.post(
       ApiConfig.analyzeTransactionsUri,

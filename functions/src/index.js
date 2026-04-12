@@ -70,6 +70,63 @@ app.post("/analyze-transactions", async (req, res, next) => {
   }
 });
 
+app.get("/analysis/latest", async (req, res, next) => {
+  try {
+    const latestRunSnapshot = await db
+      .collection("analysis_runs")
+      .where("userId", "==", req.user.uid)
+      .orderBy("generatedAt", "desc")
+      .limit(1)
+      .get();
+
+    if (latestRunSnapshot.empty) {
+      return res.status(404).json({
+        error: "not_found",
+        message: "No analysis run found for this user.",
+      });
+    }
+
+    const latestRun = latestRunSnapshot.docs[0].data();
+
+    const subscriptionsSnapshot = await db
+      .collection("detected_subscriptions")
+      .where("userId", "==", req.user.uid)
+      .orderBy("estimatedMonthlyAmount", "desc")
+      .get();
+
+    const detectedSubscriptions = subscriptionsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        merchant_code: data.merchantCode,
+        display_name: data.displayName,
+        sample_narration: data.sampleNarration,
+        threat_level: data.threatLevel,
+        confidence_score: Number(data.confidenceScore || 0),
+        occurrence_count: Number(data.occurrenceCount || 0),
+        average_amount: Number(data.averageAmount || 0),
+        estimated_monthly_amount: Number(data.estimatedMonthlyAmount || 0),
+        first_seen: data.firstSeen,
+        last_charged_on: data.lastChargedOn,
+        reasoning: data.reasoning,
+        resolved: Boolean(data.resolved),
+      };
+    });
+
+    return res.json({
+      generated_at: timestampToIso(latestRun.generatedAt),
+      scanned_transaction_count: Number(latestRun.scannedTransactionCount || 0),
+      detected_subscriptions: detectedSubscriptions,
+      total_monthly_leakage: Number(
+        latestRun.totalMonthlyLeakage ||
+          detectedSubscriptions.reduce((sum, item) => sum + item.estimated_monthly_amount, 0)
+      ),
+      currency: latestRun.currency || "INR",
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/revoke-mandate", async (req, res, next) => {
   try {
     const merchantCode = req.body?.merchant_code;
@@ -237,6 +294,18 @@ async function persistAnalysisRun(userId, payload, analysis) {
   });
 
   return resolvedStateByMerchant;
+}
+
+function timestampToIso(value) {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  if (typeof value.toDate === "function") {
+    return value.toDate().toISOString();
+  }
+
+  return new Date(value).toISOString();
 }
 
 exports.api = onRequest(

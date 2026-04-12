@@ -411,7 +411,7 @@ class _ResultsView extends StatelessWidget {
     AnalysisProvider provider,
     DetectedSubscription subscription,
   ) async {
-    final bool? success = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: false,
       backgroundColor: Colors.white,
@@ -421,20 +421,8 @@ class _ResultsView extends StatelessWidget {
       builder: (context) => RevokeMandateSheet(
         displayName: subscription.displayName,
         monthlyAmount: subscription.estimatedMonthlyAmount,
+        onRevoke: () => provider.revokeMandate(subscription),
       ),
     );
-
-    if (success == true) {
-      try {
-        await provider.revokeMandate(subscription);
-      } catch (error) {
-        if (!context.mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
-    }
   }
 }

@@ -9,10 +9,12 @@ class RevokeMandateSheet extends StatefulWidget {
     super.key,
     required this.displayName,
     required this.monthlyAmount,
+    required this.onRevoke,
   });
 
   final String displayName;
   final double monthlyAmount;
+  final Future<void> Function() onRevoke;
 
   @override
   State<RevokeMandateSheet> createState() => _RevokeMandateSheetState();
@@ -24,6 +26,8 @@ class _RevokeMandateSheetState extends State<RevokeMandateSheet> {
     _FlowStepStatus.pending,
     _FlowStepStatus.pending,
   ];
+  String? _errorMessage;
+  bool _isRunning = false;
 
   @override
   void initState() {
@@ -32,14 +36,55 @@ class _RevokeMandateSheetState extends State<RevokeMandateSheet> {
   }
 
   Future<void> _runFlow() async {
+    if (_isRunning) {
+      return;
+    }
+
+    _isRunning = true;
+    if (mounted) {
+      setState(() {
+        _errorMessage = null;
+        for (var index = 0; index < _statuses.length; index++) {
+          _statuses[index] = _FlowStepStatus.pending;
+        }
+      });
+    }
+
     await _activateStep(0, const Duration(milliseconds: 1500));
-    await _activateStep(1, const Duration(milliseconds: 1500));
-    await _activateStep(2, const Duration(milliseconds: 1500));
+    if (!mounted) {
+      _isRunning = false;
+      return;
+    }
+
+    await _setStepStatus(1, _FlowStepStatus.active);
+    await Future<void>.delayed(const Duration(milliseconds: 1000));
+    if (!mounted) {
+      _isRunning = false;
+      return;
+    }
+
+    try {
+      await widget.onRevoke();
+      await _setStepStatus(1, _FlowStepStatus.completed);
+      await _activateStep(2, const Duration(milliseconds: 900));
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _statuses[1] = _FlowStepStatus.pending;
+          _statuses[2] = _FlowStepStatus.pending;
+          _errorMessage = _normalizeError(error);
+        });
+      }
+      _isRunning = false;
+      return;
+    }
 
     await Future<void>.delayed(const Duration(milliseconds: 750));
     if (!mounted) {
+      _isRunning = false;
       return;
     }
+    _isRunning = false;
     Navigator.of(context).pop(true);
   }
 
@@ -61,6 +106,24 @@ class _RevokeMandateSheetState extends State<RevokeMandateSheet> {
     setState(() {
       _statuses[index] = _FlowStepStatus.completed;
     });
+  }
+
+  Future<void> _setStepStatus(int index, _FlowStepStatus status) async {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _statuses[index] = status;
+    });
+  }
+
+  String _normalizeError(Object error) {
+    final message = error.toString().trim();
+    if (message.startsWith('Exception: ')) {
+      return message.substring('Exception: '.length);
+    }
+    return message;
   }
 
   @override
@@ -112,6 +175,34 @@ class _RevokeMandateSheetState extends State<RevokeMandateSheet> {
               status: _statuses[2],
               doneColor: const Color(0xFF16A34A),
             ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF991B1B),
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isRunning ? null : _runFlow,
+                  icon: const Icon(LucideIcons.refreshCcw, size: 16),
+                  label: const Text('Retry revocation'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
