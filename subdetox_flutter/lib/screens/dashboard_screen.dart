@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/detected_subscription.dart';
 import '../providers/analysis_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/action_hero_card.dart';
 import '../widgets/revoke_mandate_sheet.dart';
 import '../widgets/scan_progress_card.dart';
@@ -25,8 +26,8 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Consumer<AnalysisProvider>(
-            builder: (context, provider, _) {
+          child: Consumer2<AuthProvider, AnalysisProvider>(
+            builder: (context, authProvider, provider, _) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
@@ -34,6 +35,7 @@ class DashboardScreen extends StatelessWidget {
                     _TopBar(
                       state: provider.state,
                       onRescan: provider.analyze,
+                      onLogout: authProvider.signOut,
                     ),
                     const SizedBox(height: 8),
                     Expanded(
@@ -68,10 +70,12 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.state,
     required this.onRescan,
+    required this.onLogout,
   });
 
   final DashboardState state;
   final Future<void> Function() onRescan;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +114,11 @@ class _TopBar extends StatelessWidget {
             icon: const Icon(LucideIcons.refreshCw, size: 16),
             label: const Text('Re-scan'),
           ),
+        IconButton(
+          tooltip: 'Sign out',
+          onPressed: onLogout,
+          icon: const Icon(LucideIcons.logOut, size: 18),
+        ),
       ],
     );
   }
@@ -416,7 +425,16 @@ class _ResultsView extends StatelessWidget {
     );
 
     if (success == true) {
-      provider.markResolved(subscription);
+      try {
+        await provider.revokeMandate(subscription);
+      } catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
     }
   }
 }

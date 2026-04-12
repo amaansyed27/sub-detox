@@ -8,10 +8,10 @@ import 'api_config.dart';
 class AnalysisApiService {
   const AnalysisApiService();
 
-  Future<AnalyzeTransactionsResponse> analyzeTransactions() async {
+  Future<AnalyzeTransactionsResponse> analyzeTransactions(String idToken) async {
     final response = await http.post(
       ApiConfig.analyzeTransactionsUri,
-      headers: const {'Content-Type': 'application/json'},
+      headers: ApiConfig.authHeaders(idToken),
       body: '{}',
     );
 
@@ -23,14 +23,37 @@ class AnalysisApiService {
     throw AnalysisApiException(
       'Failed to analyze transactions. '
       'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<void> revokeMandate({
+    required String idToken,
+    required String merchantCode,
+  }) async {
+    final response = await http.post(
+      ApiConfig.revokeMandateUri,
+      headers: ApiConfig.authHeaders(idToken),
+      body: jsonEncode({'merchant_code': merchantCode}),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+
+    throw AnalysisApiException(
+      'Failed to revoke mandate. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
     );
   }
 }
 
 class AnalysisApiException implements Exception {
-  AnalysisApiException(this.message);
+  AnalysisApiException(this.message, {this.statusCode});
 
   final String message;
+  final int? statusCode;
 
   @override
   String toString() => message;

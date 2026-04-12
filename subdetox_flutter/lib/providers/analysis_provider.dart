@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/analyze_transactions_response.dart';
 import '../models/detected_subscription.dart';
 import '../models/threat_level.dart';
+import '../providers/auth_provider.dart';
 import '../services/analysis_api_service.dart';
 
 enum DashboardState { initial, analyzing, results, error }
@@ -11,6 +12,7 @@ class AnalysisProvider extends ChangeNotifier {
   AnalysisProvider({required AnalysisApiService apiService}) : _apiService = apiService;
 
   final AnalysisApiService _apiService;
+  AuthProvider? _authProvider;
 
   DashboardState _state = DashboardState.initial;
   AnalyzeTransactionsResponse? _analysis;
@@ -20,6 +22,10 @@ class AnalysisProvider extends ChangeNotifier {
   DashboardState get state => _state;
   AnalyzeTransactionsResponse? get analysis => _analysis;
   String? get errorMessage => _errorMessage;
+
+  void updateAuthProvider(AuthProvider authProvider) {
+    _authProvider = authProvider;
+  }
 
   bool isResolved(String merchantCode) => _resolvedMerchantCodes.contains(merchantCode);
 
@@ -58,18 +64,45 @@ class AnalysisProvider extends ChangeNotifier {
     _state = DashboardState.analyzing;
     _errorMessage = null;
     _analysis = null;
-    _resolvedMerchantCodes.clear();
     notifyListeners();
 
     try {
-      _analysis = await _apiService.analyzeTransactions();
+      final token = await _authProvider?.getIdToken();
+      if (token == null) {
+        throw AnalysisApiException(
+          'Missing auth token. Please sign in again.',
+          statusCode: 401,
+        );
+      }
+
+      _analysis = await _apiService.analyzeTransactions(token);
       _state = DashboardState.results;
       notifyListeners();
     } catch (error) {
+      if (error is AnalysisApiException && error.statusCode == 401) {
+        await _authProvider?.signOut();
+      }
       _errorMessage = error.toString();
       _state = DashboardState.error;
       notifyListeners();
     }
+  }
+
+  Future<void> revokeMandate(DetectedSubscription subscription) async {
+    final token = await _authProvider?.getIdToken();
+    if (token == null) {
+      throw AnalysisApiException(
+        'Missing auth token. Please sign in again.',
+        statusCode: 401,
+      );
+    }
+
+    await _apiService.revokeMandate(
+      idToken: token,
+      merchantCode: subscription.merchantCode,
+    );
+    _resolvedMerchantCodes.add(subscription.merchantCode);
+    notifyListeners();
   }
 
   void markResolved(DetectedSubscription subscription) {
