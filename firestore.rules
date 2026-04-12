@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function ownerFieldMatchesCreate() {
+      return signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    function ownerFieldMatchesExisting() {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function ownerFieldImmutable() {
+      return request.resource.data.userId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow create, read, update, delete: if isOwner(userId);
+    }
+
+    match /account_links/{docId} {
+      allow create: if ownerFieldMatchesCreate();
+      allow read, delete: if ownerFieldMatchesExisting();
+      allow update: if ownerFieldMatchesExisting() && ownerFieldImmutable();
+    }
+
+    match /consents/{docId} {
+      allow create: if ownerFieldMatchesCreate();
+      allow read, delete: if ownerFieldMatchesExisting();
+      allow update: if ownerFieldMatchesExisting() && ownerFieldImmutable();
+    }
+
+    match /fi_sessions/{docId} {
+      allow create: if ownerFieldMatchesCreate();
+      allow read, delete: if ownerFieldMatchesExisting();
+      allow update: if ownerFieldMatchesExisting() && ownerFieldImmutable();
+    }
+
+    match /analysis_runs/{docId} {
+      allow create: if ownerFieldMatchesCreate();
+      allow read, delete: if ownerFieldMatchesExisting();
+      allow update: if ownerFieldMatchesExisting() && ownerFieldImmutable();
+    }
+
+    match /detected_subscriptions/{docId} {
+      allow create: if ownerFieldMatchesCreate();
+      allow read, delete: if ownerFieldMatchesExisting();
+      allow update: if ownerFieldMatchesExisting() && ownerFieldImmutable();
+    }
+
+    match /revoke_actions/{docId} {
+      allow create: if ownerFieldMatchesCreate();
+      allow read, delete: if ownerFieldMatchesExisting();
+      allow update: if ownerFieldMatchesExisting() && ownerFieldImmutable();
+    }
+
+    match /audit_events/{docId} {
+      allow create: if ownerFieldMatchesCreate();
+      allow read, delete: if ownerFieldMatchesExisting();
+      allow update: if ownerFieldMatchesExisting() && ownerFieldImmutable();
+    }
+
+    // Optional simulator/admin namespace for privileged operations.
+    match /simulator_controls/{docId} {
+      allow read, write: if signedIn() && request.auth.token.admin == true;
+    }
+  }
+}
