@@ -18,7 +18,7 @@ class SubDetoxApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AnalysisProvider>(
-          create: (_) => AnalysisProvider(apiService: AnalysisApiService()),
+          create: (_) => AnalysisProvider(apiService: const AnalysisApiService()),
         ),
       ],
       child: MaterialApp(
