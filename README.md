@@ -1,19 +1,16 @@
-# SubDetox (Firebase Implementation In Progress)
+# SubDetox
 
 SubDetox is an AI-powered financial auditor that detects recurring wealth leakage from subscriptions, auto-debits, and telecom VAS charges.
 
-The codebase is currently transitioning from a local FastAPI prototype to a Firebase-native backend.
+## What SubDetox Shows
 
-## Current Status
+- Auth-gated onboarding with Firebase Auth
+- AI-style recurring debit detection from mocked AA transaction payloads
+- Risk-tiered dashboard (high, medium, low) with confidence and reasoning
+- Revoke flow that calls backend during modal execution
+- Persisted state so previous analysis and resolved subscriptions restore on next login
 
-- Firebase project created and linked: `subdetox-20260412-8514`
-- Firestore database provisioned with deployed rules and indexes
-- Firebase Auth email/password provider enabled via CLI
-- Firebase Functions API implemented with authenticated routes
-- Flutter app now uses Firebase Auth gate and bearer-authenticated API calls
-- Revoke state now persists and is restored on fresh analysis reloads
-
-## Architecture (Current)
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -21,28 +18,28 @@ flowchart TD
 
     subgraph FE[Frontend]
       A[Firebase Auth Gate\nEmail + Phone OTP]
-      D[Premium Dashboard\nAnalyze + Revoke]
+      D[Dashboard\nAnalyze + Revoke + Resume]
       F --> A --> D
     end
 
     D -->|Bearer ID Token + HTTPS| API[Firebase Functions\napi]
 
     subgraph BE[Firebase Backend]
-      API --> SIM[AA Simulator Flows\nConsent + FI Sessions]
       API --> ENG[Analysis Engine\nRecurring Leak Detection]
+      API --> SIM[AA Simulator\nConsent + FI Sessions]
       API --> DB[(Firestore)]
-      SIM --> DB
       ENG --> DB
+      SIM --> DB
     end
 
-    DB --> D
+    DB -->|Latest analysis + resolved state| D
 ```
 
 ## Repository Structure
 
 ```text
 sub-detox/
-  app/                          # Existing FastAPI prototype (legacy path)
+  app/                          # Legacy FastAPI prototype path
   functions/                    # Firebase Functions backend
     src/
       index.js
@@ -64,37 +61,39 @@ sub-detox/
   firestore.indexes.json
   .env.example
   self-testing-guide.md
+  usage-guide.md
 ```
 
-## Quick Start (Firebase Path)
+## Quick Start (Local Demo)
 
-### 1) Install Function Dependencies
+### 1) Install dependencies
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
 npm --prefix functions install
+cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
+flutter pub get
 ```
 
-### 2) Start Firebase Emulators
+### 2) Start Firebase emulators
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
 npx -y firebase-tools@latest emulators:start --only auth,firestore,functions --project subdetox-20260412-8514
 ```
 
-### 3) Run Flutter App
+### 3) Run Flutter app
 
 Open a second terminal:
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter pub get
 flutter run --dart-define=FIREBASE_USE_EMULATOR=true
 ```
 
 ## Firebase API Routes (Functions)
 
-Base (emulator):
+Base emulator URL:
 
 `http://127.0.0.1:5001/subdetox-20260412-8514/asia-south1/api`
 
@@ -104,6 +103,7 @@ Implemented routes:
 - `GET /me` (auth required)
 - `GET /mock-aa-data` (auth required)
 - `POST /analyze-transactions` (auth required)
+- `GET /analysis/latest` (auth required)
 - `POST /revoke-mandate` (auth required)
 - `POST /simulator/consents` (auth required)
 - `GET /simulator/consents/:consentId` (auth required)
@@ -111,15 +111,13 @@ Implemented routes:
 - `POST /simulator/fi-sessions` (auth required)
 - `GET /simulator/fi-sessions/:sessionId` (auth required)
 
-## Important Notes
+## Demo Notes
 
-- Functions emulator currently runs locally and is wired by default in Flutter.
-- Cloud deployment of Functions requires billing (Blaze) on the Firebase project.
-- Firestore and Auth provisioning were completed through CLI and are active.
-- Phone OTP in production requires provider setup and verified testing numbers strategy.
+- The Flutter app is emulator-ready by default when `FIREBASE_USE_EMULATOR=true`.
+- Cloud Functions deployment needs Blaze billing on Firebase.
+- Phone OTP is available in code path, but email sign-in is recommended for quickest live demo.
 
-## Testing
+## Documentation
 
-Use the full test flow in:
-
-- [self-testing-guide.md](self-testing-guide.md)
+- [self-testing-guide.md](self-testing-guide.md) for full validation and regression checks
+- [usage-guide.md](usage-guide.md) for a presenter-friendly hackathon demo script
