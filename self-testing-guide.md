@@ -1,182 +1,129 @@
-# SubDetox Self Testing Guide
+# SubDetox Self Testing Guide (Firebase Path)
 
-This guide helps you test the full stack locally: FastAPI backend plus Flutter app.
+This guide validates the current Firebase implementation (Auth + Firestore + Functions + Flutter).
 
 ## 1. Prerequisites
 
-- Python 3.10+ installed
-- Flutter SDK installed
-- Android emulator, iOS simulator, or desktop target available
+- Node.js and npm
+- Firebase CLI access (`npx firebase-tools`)
+- Flutter SDK
+- Android emulator, iOS simulator, or desktop target
 
 ## 2. One-Time Setup
 
-### Backend setup
-
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-### Frontend setup
-
-```powershell
+npm --prefix functions install
 cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
 flutter pub get
 ```
 
-## 3. Run the App
+## 3. Start Local Stack
 
 Open two terminals.
 
-### Terminal A: Start FastAPI
+### Terminal A: Firebase emulators
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
-.\.venv\Scripts\Activate.ps1
-uvicorn app.main:app --reload
+npx -y firebase-tools@latest emulators:start --only auth,firestore,functions --project subdetox-20260412-8514
 ```
 
-Expected startup URL: `http://127.0.0.1:8000`
+Expected:
+- Functions API served on `http://127.0.0.1:5001/subdetox-20260412-8514/asia-south1/api`
+- Emulator UI on `http://127.0.0.1:4000`
 
-### Terminal B: Start Flutter
+### Terminal B: Flutter app
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter run
+flutter run --dart-define=FIREBASE_USE_EMULATOR=true
 ```
 
-## 4. Backend API Smoke Tests
+## 4. API Smoke Tests (Authenticated)
 
-Run this in a new PowerShell terminal:
+The API now requires Firebase ID tokens for most routes.
+
+Quick health check:
 
 ```powershell
-# 1) Health
-$health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method Get
-$health
-
-# 2) Mock AA payload
-$mock = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/mock-aa-data/" -Method Get
-$mock.ver
-$mock.FI.Count
-
-# 3) Analysis endpoint
-$analysis = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/analyze-transactions/" -Method Post -ContentType "application/json" -Body "{}"
-$analysis.total_monthly_leakage
-$analysis.scanned_transaction_count
-$analysis.detected_subscriptions | Select-Object display_name, threat_level, estimated_monthly_amount
+Invoke-RestMethod -Uri "http://127.0.0.1:5001/subdetox-20260412-8514/asia-south1/api/health" -Method Get
 ```
 
-Expected outcomes:
+Expected:
+- `{ status: "ok", service: "subdetox-firebase-api" }`
 
-- Health returns status = ok
-- Analyze response includes:
-  - `total_monthly_leakage` greater than 0
-  - `detected_subscriptions` with high, medium, and low threat entries
-- Typical seeded values should include items similar to:
-  - Gymcult AutoPay
-  - VIL HelloTune VAS
-  - Credit Shield Add-On
-  - Netflix Standard
+## 5. Frontend Flow Validation
 
-## 5. Frontend UI Test Scenarios
+### Scenario A: Auth gate
 
-### Scenario A: Initial state
-
-1. Launch the app.
-2. Confirm you see the hero landing panel with a Start AI Analysis action.
+1. Launch app.
+2. Confirm login screen appears first.
+3. Test Email mode:
+   1. Create account
+   2. Sign in
 
 Pass criteria:
-- Screen loads without crash
-- CTA is visible and tappable
+- Auth state changes route to dashboard
+- No crash in transition
 
-### Scenario B: Analyzing state
+### Scenario B: Analyze with authenticated call
 
 1. Tap Start AI Analysis.
-2. Confirm loading state appears.
+2. Confirm analyzing state appears.
+3. Wait for results.
 
 Pass criteria:
-- Loading panel appears immediately
-- No freeze or jank while waiting for API response
+- Results payload loads
+- Hero leakage card animates
+- Threat sections render
 
-### Scenario C: Results state and data quality
+### Scenario C: Revoke persistence path
 
-1. Wait for results to load.
-2. Validate top action hero card:
-   - Animated leakage amount counts up
-   - Annualized leakage text is shown
-3. Validate scan confidence card:
-   - Scanned transactions metric shown
-   - Flagged and resolved metrics shown
+1. Tap Revoke Mandate on one card.
+2. Complete modal sequence.
+3. Trigger re-scan.
 
 Pass criteria:
-- Counter animation runs once per fresh analysis
-- Metrics are non-empty and plausible
+- Revoke API call succeeds
+- Card is marked resolved after reload via backend-resolved state
 
-### Scenario D: Threat grouping and ordering
+### Scenario D: Sign out security
 
-1. Scroll through sections.
-2. Confirm grouping:
-   - Immediate Action Required (HIGH)
-   - Monitor Closely (MEDIUM)
-   - Known Subscriptions (LOW)
-3. Confirm high-risk cards render before low-risk cards.
+1. Tap logout icon.
+2. Confirm app returns to login screen.
+3. Try navigating back.
 
 Pass criteria:
-- Threat badges use distinct colors
-- High-risk entries appear in top section
+- Protected dashboard is not accessible without auth
 
-### Scenario E: Expandable reasoning
+## 6. Firestore Rule Checks
 
-1. Tap chevron on any subscription card.
-2. Validate expanded panel text under Why did we flag this?
+Use Emulator UI (`http://127.0.0.1:4000`) to verify:
 
-Pass criteria:
-- Expand/collapse animation works
-- Reasoning content is readable
+- User documents are scoped by UID
+- Analysis runs are created per user
+- Revoke actions and audit events are persisted
 
-### Scenario F: Revoke mandate flow
+## 7. Regression Checklist
 
-1. Tap Revoke Mandate on an unresolved card.
-2. Verify bottom sheet step sequence:
-   1. Authenticating via Account Aggregator...
-   2. Intercepting e-NACH mandate ID...
-   3. Mandate Revoked. ₹[amount] saved annually!
-3. Let modal auto-close.
-4. Verify the card transitions to Resolved state.
-
-Pass criteria:
-- Sequence advances step by step, not all at once
-- Final step shows green completion styling
-- Resolved card appears grayed with Resolved badge
-- Hero/metrics update to reflect reduced active leakage
-
-## 6. Regression Checklist
-
-- [ ] Backend boots without import/runtime errors
-- [ ] `POST /api/analyze-transactions/` succeeds consistently
-- [ ] Flutter app runs on target device/emulator
-- [ ] No red-screen/runtime exception during full flow
-- [ ] Revoke flow completes and updates provider state
-- [ ] Pull-to-refresh triggers a new analysis run
-
-## 7. Platform Networking Notes
-
-The app maps host automatically:
-
-- Android emulator uses `10.0.2.2`
-- iOS simulator/desktop/web uses `127.0.0.1`
-
-If requests fail on a physical device, replace localhost host mapping with your machine LAN IP in `lib/services/api_config.dart`.
+- [ ] Flutter analyzer clean (`flutter analyze`)
+- [ ] Functions load in emulator without syntax failures
+- [ ] Authenticated analyze call works
+- [ ] Unauthorized calls return 401
+- [ ] Revoke action persists and is reflected on next analysis
 
 ## 8. Helpful Commands
 
 ```powershell
-# Backend quick check
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method Get
-
-# Flutter static checks
+# Validate Flutter
 cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
 flutter analyze
+
+# Validate Function syntax
+node --check C:\Users\Amaan\Downloads\sub-detox\functions\src\index.js
+
+# Deploy auth/rules/indexes (already executed once)
+cd C:\Users\Amaan\Downloads\sub-detox
+npx -y firebase-tools@latest deploy --only auth,firestore:rules,firestore:indexes --project subdetox-20260412-8514
 ```
