@@ -13,6 +13,7 @@ class DetectedSubscription {
     required this.firstSeen,
     required this.lastChargedOn,
     required this.reasoning,
+    required this.resolved,
   });
 
   final String merchantCode;
@@ -26,6 +27,7 @@ class DetectedSubscription {
   final DateTime firstSeen;
   final DateTime lastChargedOn;
   final String reasoning;
+  final bool resolved;
 
   factory DetectedSubscription.fromJson(Map<String, dynamic> json) {
     return DetectedSubscription(
@@ -42,6 +44,7 @@ class DetectedSubscription {
       firstSeen: DateTime.parse((json['first_seen'] ?? '') as String),
       lastChargedOn: DateTime.parse((json['last_charged_on'] ?? '') as String),
       reasoning: (json['reasoning'] ?? '') as String,
+      resolved: (json['resolved'] ?? false) as bool,
     );
   }
 

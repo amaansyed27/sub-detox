@@ -76,6 +76,13 @@ class AnalysisProvider extends ChangeNotifier {
       }
 
       _analysis = await _apiService.analyzeTransactions(token);
+      _resolvedMerchantCodes
+        ..clear()
+        ..addAll(
+          _analysis!.detectedSubscriptions
+              .where((item) => item.resolved)
+              .map((item) => item.merchantCode),
+        );
       _state = DashboardState.results;
       notifyListeners();
     } catch (error) {

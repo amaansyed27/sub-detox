@@ -57,7 +57,12 @@ app.post("/analyze-transactions", async (req, res, next) => {
     const payload = req.body?.aa_payload || generateMockAaPayload(req.user.uid, req.user);
     const analysis = analyzeTransactionsPayload(payload);
 
-    await persistAnalysisRun(req.user.uid, payload, analysis);
+    const resolvedStateByMerchant = await persistAnalysisRun(req.user.uid, payload, analysis);
+
+    analysis.detected_subscriptions = analysis.detected_subscriptions.map((subscription) => ({
+      ...subscription,
+      resolved: Boolean(resolvedStateByMerchant[subscription.merchant_code]),
+    }));
 
     res.json(analysis);
   } catch (error) {
@@ -182,6 +187,8 @@ app.use((error, req, res, next) => {
 });
 
 async function persistAnalysisRun(userId, payload, analysis) {
+  const resolvedStateByMerchant = {};
+
   const runRef = await db.collection("analysis_runs").add({
     userId,
     generatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -197,6 +204,7 @@ async function persistAnalysisRun(userId, payload, analysis) {
     const docRef = db.collection("detected_subscriptions").doc(docId);
     const existing = await docRef.get();
     const previousResolved = existing.exists ? existing.data().resolved === true : false;
+    resolvedStateByMerchant[subscription.merchant_code] = previousResolved;
 
     await docRef.set(
       {
@@ -227,6 +235,8 @@ async function persistAnalysisRun(userId, payload, analysis) {
     totalMonthlyLeakage: analysis.total_monthly_leakage,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+
+  return resolvedStateByMerchant;
 }
 
 exports.api = onRequest(
