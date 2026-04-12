@@ -22,6 +22,7 @@ class DetectedSubscription(BaseModel):
     first_seen: date
     last_charged_on: date
     reasoning: str
+    resolved: bool = False
 
 
 class AnalyzeTransactionsResponse(BaseModel):
