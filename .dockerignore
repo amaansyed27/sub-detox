@@ -1,0 +1,15 @@
+.git/
+.gitignore
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.dart_tool/
+subdetox_flutter/
+functions/node_modules/
+functions/lib/
+.firebase/
+firebase-debug.log
+*.local
+.env
+.env.*

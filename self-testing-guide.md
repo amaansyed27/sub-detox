@@ -1,172 +1,148 @@
-# SubDetox Self Testing Guide (Firebase Path)
+# SubDetox Self Testing Guide (FastAPI + Firebase)
 
-This guide validates the current Firebase implementation (Auth + Firestore + Functions + Flutter).
+This guide validates the revamp architecture:
+
+- Firebase for auth and persistence
+- FastAPI for full AA-style emulator APIs
 
 ## 1. Prerequisites
 
-- Node.js and npm
-- Firebase CLI access (`npx firebase-tools`)
+- Python virtual environment at `C:\Users\Amaan\Downloads\sub-detox\.venv`
+- Firebase CLI access (`npx -y firebase-tools@latest`)
 - Flutter SDK
-- Android emulator, iOS simulator, or desktop target
+- Node.js (for legacy Functions syntax check and tooling)
 
 ## 2. One-Time Setup
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
-npm --prefix functions install
+c:/Users/Amaan/Downloads/sub-detox/.venv/Scripts/python.exe -m pip install -r requirements.txt
 cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
 flutter pub get
 ```
 
 ## 3. Start Local Stack
 
-Open two terminals.
+Open three terminals.
 
-### Terminal A: Firebase emulators
+### Terminal A: Firebase emulators (auth + firestore)
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
-npx -y firebase-tools@latest emulators:start --only auth,firestore,functions --project subdetox-20260412-8514
+npx -y firebase-tools@latest emulators:start --only auth,firestore --project subdetox-20260412-8514
 ```
 
-Expected:
-- Functions API served on `http://127.0.0.1:5001/subdetox-20260412-8514/asia-south1/api`
-- Emulator UI on `http://127.0.0.1:4000`
+### Terminal B: FastAPI backend
 
-### Terminal B: Flutter app
+```powershell
+cd C:\Users\Amaan\Downloads\sub-detox
+$env:USE_FIRESTORE_EMULATOR='true'
+$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8081'
+c:/Users/Amaan/Downloads/sub-detox/.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+### Terminal C: Flutter app
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter run --dart-define=FIREBASE_USE_EMULATOR=true
+flutter run --dart-define=BACKEND_MODE=fastapi-local --dart-define=FASTAPI_LOCAL_PORT=8000 --dart-define=FIREBASE_USE_EMULATOR=true
 ```
 
-## 4. API Smoke Tests (Authenticated)
+## 4. Automated Test Suite
 
-The API now requires Firebase ID tokens for most routes.
-
-Quick health check:
+Run all automated checks:
 
 ```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:5001/subdetox-20260412-8514/asia-south1/api/health" -Method Get
+powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\run_automated_tests.ps1
 ```
 
-Expected:
-- `{ status: "ok", service: "subdetox-firebase-api" }`
+Coverage in this suite:
 
-Unauthorized check (no bearer token):
+- v2 consent lifecycle (create, approve simulation, data session, fetch, revoke)
+- app-compat analyze/latest/revoke flow
+- FIP discovery and account-availability APIs
+- Flutter static analysis
+- legacy Functions syntax check
+
+## 5. Manual API Smoke Test
+
+With FastAPI running locally, run:
 
 ```powershell
-try {
-   Invoke-RestMethod -Uri "http://127.0.0.1:5001/subdetox-20260412-8514/asia-south1/api/me" -Method Get
-} catch {
-   $_.Exception.Response.StatusCode.value__
-}
+powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\manual_api_smoke.ps1
 ```
 
-Expected:
-- `401`
+Expected summary fields:
 
-Latest-analysis check before any scan (new user):
+- health = ok
+- consentStatus = PENDING
+- approvedStatus = ACTIVE
+- fetchStatus in PARTIAL/COMPLETED/FAILED
+- detectedCount > 0
+- revokeStatus = resolved
 
-Expected behavior from app path:
-- First sign-in shows initial dashboard state with Start AI Analysis button
-- This indicates `/analysis/latest` returned no data for that user yet
-
-## 5. Frontend Flow Validation
+## 6. Frontend Manual Validation
 
 ### Scenario A: Auth gate
 
 1. Launch app.
 2. Confirm login screen appears first.
-3. Test Email mode:
-   1. Create account
-   2. Sign in
+3. Create account and sign in.
 
 Pass criteria:
-- Auth state changes route to dashboard
-- No crash in transition
 
-### Scenario B: Analyze with authenticated call
+- Auth state routes to dashboard.
+
+### Scenario B: Analyze and grouping
 
 1. Tap Start AI Analysis.
-2. Confirm analyzing state appears.
-3. Wait for results.
+2. Confirm results in risk sections.
 
 Pass criteria:
-- Results payload loads
-- Hero leakage card animates
-- Threat sections render
 
-### Scenario C: Revoke persistence path
+- Detected subscriptions render with confidence and reasoning.
 
-1. Tap Revoke Mandate on one card.
-2. Complete modal sequence.
-3. Confirm no success state appears before backend call completes.
-4. Trigger re-scan.
+### Scenario C: Revoke persistence
+
+1. Revoke one merchant.
+2. Trigger re-scan.
+3. Restart app and sign in again.
 
 Pass criteria:
-- Revoke API call succeeds inside modal sequence
-- Card is marked resolved after reload via backend-resolved state
-- If revoke fails, modal shows error and Retry action
 
-### Scenario D: Latest analysis auto-resume
+- Merchant remains resolved across refresh and login.
 
-1. Complete one successful analysis run.
-2. Fully close the app.
-3. Relaunch and sign in with the same account.
+### Scenario D: Sign out guard
 
-Pass criteria:
-- Dashboard resumes from latest saved analysis without manually tapping Start AI Analysis
-- Previously revoked merchant cards remain resolved
+1. Tap logout.
+2. Verify protected dashboard cannot be accessed.
 
-### Scenario E: Sign out security
+## 7. Firestore Data Checks
 
-1. Tap logout icon.
-2. Confirm app returns to login screen.
-3. Try navigating back.
+Use Emulator UI (`http://127.0.0.1:4000`) and verify:
 
-Pass criteria:
-- Protected dashboard is not accessible without auth
+- `users` updated per UID
+- `consents` and `fi_sessions` created during v2 flows
+- `analysis_runs` and `detected_subscriptions` created during analyze
+- `revoke_actions` and `audit_events` recorded
 
-## 6. Firestore Rule Checks
+## 8. Regression Checklist
 
-Use Emulator UI (`http://127.0.0.1:4000`) to verify:
+- [ ] `pytest` passes
+- [ ] Flutter analyzer passes
+- [ ] FastAPI manual smoke script passes
+- [ ] v2 consent/session endpoints behave as expected
+- [ ] app-compat endpoints continue to work for Flutter
+- [ ] Firestore persistence reflects lifecycle operations
 
-- User documents are scoped by UID
-- Analysis runs are created per user
-- Detected subscriptions persist with `resolved` flags by user
-- Revoke actions and audit events are persisted
+## 9. Cloud Deploy Verification
 
-## 7. Regression Checklist
+After cloud deploy, repeat:
 
-- [ ] Flutter analyzer clean (`flutter analyze`)
-- [ ] Functions load in emulator without syntax failures
-- [ ] Authenticated analyze call works
-- [ ] Unauthorized calls return 401
-- [ ] Latest analysis resumes on fresh login for same user
-- [ ] Revoke action persists and is reflected on next analysis
-- [ ] Revoke failure path allows retry from modal
+1. `GET /health`
+2. Authenticated `POST /api/analyze-transactions`
+3. Authenticated `GET /api/analysis/latest`
+4. Authenticated `POST /api/revoke-mandate`
+5. Consent + session flow via `/v2/*`
 
-## 8. Helpful Commands
-
-```powershell
-# Validate Flutter
-cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter analyze
-
-# Validate Function syntax
-node --check C:\Users\Amaan\Downloads\sub-detox\functions\src\index.js
-
-# Deploy indexes if query requirements change
-cd C:\Users\Amaan\Downloads\sub-detox
-npx -y firebase-tools@latest deploy --only firestore:indexes --project subdetox-20260412-8514
-```
-
-## 9. Demo Readiness Cross-Check
-
-Before presenting in hackathon:
-
-- Keep Emulator terminal visible to prove live backend interactions
-- Use a clean demo account for first-run latest-analysis behavior
-- Keep one resolved merchant ready to showcase persistence
-- Open [usage-guide.md](usage-guide.md) and follow the timed script
+Deployment instructions are in [cloud-run-deploy-guide.md](cloud-run-deploy-guide.md).

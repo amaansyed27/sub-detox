@@ -1,124 +1,124 @@
 # SubDetox Usage Guide (Hackathon Demo)
 
-This guide is a practical runbook to use SubDetox live, test the core flows, and present a clean hackathon demo.
+This guide is optimized for the current architecture:
+
+- Firebase: auth + persistence
+- FastAPI: full AA-style emulator API
 
 ## 1. Goal
 
-Use this guide to show:
+Show these outcomes in one flow:
 
 - Authenticated onboarding
-- AI-style recurring subscription detection
-- Risk prioritization on dashboard
-- Real revoke execution flow with persistence
-- Latest-analysis resume on next login
+- AI recurring-charge detection
+- Real backend revoke behavior
+- Persisted resume behavior on next login
+- AA-style consent and data-session emulator capability
 
 ## 2. Demo Environment Setup
+
+Open three terminals.
 
 ### Terminal A: Firebase emulators
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
-npx -y firebase-tools@latest emulators:start --only auth,firestore,functions --project subdetox-20260412-8514
+npx -y firebase-tools@latest emulators:start --only auth,firestore --project subdetox-20260412-8514
 ```
 
-Wait until you see:
+### Terminal B: FastAPI backend
 
-- Functions endpoint at `http://127.0.0.1:5001/subdetox-20260412-8514/asia-south1/api`
-- Emulator UI at `http://127.0.0.1:4000`
+```powershell
+cd C:\Users\Amaan\Downloads\sub-detox
+$env:USE_FIRESTORE_EMULATOR='true'
+$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8081'
+c:/Users/Amaan/Downloads/sub-detox/.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-### Terminal B: Flutter app
+### Terminal C: Flutter app
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter run --dart-define=FIREBASE_USE_EMULATOR=true
+flutter run --dart-define=BACKEND_MODE=fastapi-local --dart-define=FASTAPI_LOCAL_PORT=8000 --dart-define=FIREBASE_USE_EMULATOR=true
 ```
 
 ## 3. First Run (New User)
 
-1. Open app and create a user with Email and Password.
-2. Confirm app moves from login to dashboard.
-3. For a brand new account, dashboard should show Start AI Analysis first.
+1. Create a user with Email and Password.
+2. Confirm app transitions from login to dashboard.
+3. First-time user should see Start AI Analysis.
 
-What to say during demo:
+Suggested narration:
 
-"The app is fully auth-gated. Each user gets isolated analysis and revoke history in Firestore."
+"Firebase secures identity and stores state. FastAPI emulates AA lifecycle and analysis APIs."
 
 ## 4. Core Product Walkthrough
 
-### Step A: Run analysis
+### Step A: Analyze
 
 1. Tap Start AI Analysis.
-2. Wait for loading sequence.
-3. Review results sections:
-   - Immediate Action Required
-   - Monitor Closely
-   - Known Subscriptions
+2. Wait for results.
+3. Show risk-tiered sections and confidence/reasoning.
 
-Demo talking points:
+### Step B: Revoke
 
-- Confidence score and reasoning per merchant
-- Estimated monthly leakage summary
-- Risk-tiered prioritization
+1. Revoke one high-risk merchant.
+2. Wait for modal sequence completion.
+3. Confirm card resolves.
 
-### Step B: Revoke one subscription
+Suggested narration:
 
-1. Tap Revoke Mandate on a high-risk card.
-2. Let modal flow run end-to-end.
-3. Confirm card becomes Resolved.
+"Revocation is server-backed and persisted, not a client-only flag."
 
-Demo talking point:
-
-"Revocation is not a fake UI toggle. The modal triggers a real backend revoke call before success is shown."
-
-### Step C: Validate persistence
+### Step C: Persistence
 
 1. Tap Re-scan.
 2. Confirm revoked merchant remains resolved.
-3. Sign out.
-4. Sign in again with same account.
-5. Confirm latest analysis auto-loads and resolved state is preserved.
+3. Sign out and sign in again.
+4. Confirm latest analysis auto-resumes.
 
-Demo talking point:
+## 5. Optional API Demonstration (AA Emulator)
 
-"The app restores the latest saved analysis using authenticated user context and backend state."
+Run this in a fourth terminal to show non-UI API realism:
 
-## 5. Suggested 6-Minute Hackathon Script
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\manual_api_smoke.ps1
+```
 
-1. 0:00 to 1:00 - Problem statement and login gate
-2. 1:00 to 2:30 - Run AI analysis and explain leak detection
-3. 2:30 to 4:00 - Revoke one mandate in modal sequence
-4. 4:00 to 5:00 - Re-scan and show resolved persistence
-5. 5:00 to 6:00 - Sign out/sign in and show latest-analysis resume
+This exercises consent creation, simulated approval, data session creation/fetch, and app-compat analyze/revoke.
 
-## 6. Quick Recovery if Something Fails Live
+## 6. Suggested 7-Minute Hackathon Script
 
-If analysis fails:
+1. 0:00 to 1:00: Problem statement and architecture split (Firebase + FastAPI)
+2. 1:00 to 2:30: Login gate and Start AI Analysis
+3. 2:30 to 4:00: Results explanation and leakage prioritization
+4. 4:00 to 5:00: Revoke and immediate resolved state
+5. 5:00 to 6:00: Re-scan and login-resume persistence
+6. 6:00 to 7:00: Optional API smoke output for AA-style lifecycle proof
 
-- Check Emulator terminal for Functions errors
-- Verify Flutter run used `--dart-define=FIREBASE_USE_EMULATOR=true`
-- Retry analysis from dashboard
+## 7. Quick Recovery During Live Demo
 
-If revoke fails:
+If app cannot reach backend:
 
-- Use Retry button in revoke modal
-- Verify emulator is still running and auth session is active
+- Verify FastAPI terminal is running at `127.0.0.1:8000`
+- Verify Flutter started with `BACKEND_MODE=fastapi-local`
+- For physical device, pass `LOCAL_API_HOST=<LAN_IP>`
 
-If login fails:
+If auth fails:
 
-- Recreate user with a different email
-- Check Auth emulator is running on port 9099
+- Confirm auth emulator is running (`:9099`)
+- Create a fresh demo user
 
-## 7. Optional Reset Between Demo Runs
+If data looks stale:
 
-Use Emulator UI (`http://127.0.0.1:4000`) to clean test user data if you want a fresh start:
-
-- Delete the demo user from Auth emulator
-- Remove user-linked documents from Firestore emulator collections
+- Re-run analysis
+- Check Firestore emulator UI for fresh writes
 
 ## 8. Presenter Checklist
 
-- Emulator terminal visible
-- Flutter app hot and ready on target device
-- One backup demo account available
-- Network-independent flow confirmed (all local emulators)
-- Keep [self-testing-guide.md](self-testing-guide.md) open for deeper QA questions
+- Firebase emulator visible
+- FastAPI terminal visible
+- Flutter app running and warm
+- Backup demo account available
+- [self-testing-guide.md](self-testing-guide.md) open for QA follow-ups
+- [cloud-run-deploy-guide.md](cloud-run-deploy-guide.md) ready for deployment questions
