@@ -1,158 +1,93 @@
-# SubDetox End User Guide (Use + Full Feature Testing)
+# SubDetox User Guide
 
-This guide is written for an end user who wants to run the app and verify every major feature.
+This guide is for normal users. It explains what to do after opening the app and how to verify each feature works.
 
-## 1. What You Will Validate
+## 1. First-Time Use
 
-By the end of this guide, you will have tested:
+1. Open SubDetox.
+2. Tap Create account.
+3. Enter your email and password.
+4. Sign in.
 
-- Account creation and login
-- Analysis generation from transaction data
-- Risk grouping and subscription reasoning
-- Mandate revoke flow
-- Persisted resolved state after re-scan
-- Session persistence after logout/login
-- AA-style API lifecycle simulation
+Expected result:
 
-## 2. Choose Your Usage Mode
+- You land on the main dashboard.
 
-### Mode A: Live Cloud Backend (recommended for normal usage)
+## 2. Run Your First Analysis
 
-Run the app against Cloud Run:
+1. On the dashboard, tap Start AI Analysis.
+2. Wait until the loading flow completes.
 
-```powershell
-cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter run --dart-define=BACKEND_MODE=fastapi-cloud --dart-define=CLOUD_RUN_URL=https://subdetox-api-wiz4yigmpq-el.a.run.app --dart-define=FIREBASE_USE_EMULATOR=false
-```
+Expected result:
 
-### Mode B: Local Full Stack (recommended for deep testing)
+- You see subscription cards detected from transaction history.
+- Each card shows merchant name, confidence, and monthly impact.
 
-Terminal 1:
+## 3. Review Risk Priorities
 
-```powershell
-cd C:\Users\Amaan\Downloads\sub-detox
-npx -y firebase-tools@latest emulators:start --only auth,firestore --project subdetox-20260412-8514
-```
+1. Scroll through all subscription cards.
+2. Check which cards are highest priority.
+3. Open details and read the reasoning text.
 
-Terminal 2:
+Expected result:
 
-```powershell
-cd C:\Users\Amaan\Downloads\sub-detox
-$env:USE_FIRESTORE_EMULATOR='true'
-$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8081'
-c:/Users/Amaan/Downloads/sub-detox/.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
+- Charges are clearly grouped by urgency/risk.
+- Reasoning is visible and understandable.
 
-Terminal 3:
+## 4. Revoke an Unwanted Subscription
 
-```powershell
-cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter run --dart-define=BACKEND_MODE=fastapi-local --dart-define=FASTAPI_LOCAL_PORT=8000 --dart-define=FIREBASE_USE_EMULATOR=true
-```
-
-If you are using a physical phone, also pass `--dart-define=LOCAL_API_HOST=<your_pc_lan_ip>`.
-
-## 3. End-to-End Feature Testing Checklist
-
-### Test 1: Sign Up and Login
-
-1. Open the app.
-2. Create a new account with email and password.
-3. Log in.
-
-Pass criteria:
-
-- App moves from login screen to dashboard.
-
-### Test 2: Start Analysis
-
-1. Tap Start AI Analysis.
-2. Wait for analysis to complete.
-
-Pass criteria:
-
-- Dashboard shows detected subscriptions.
-- You can see threat/risk grouping and reasoning.
-
-### Test 3: Validate Risk Sections
-
-1. Review all subscription cards.
-2. Confirm confidence score, merchant, and estimated monthly amount are visible.
-
-Pass criteria:
-
-- At least one detected item appears.
-- Grouping is visible and understandable.
-
-### Test 4: Revoke a Subscription
-
-1. Select one high-priority subscription.
+1. Choose one unwanted subscription.
 2. Tap Revoke Mandate.
-3. Complete the flow.
+3. Complete the in-app revoke flow.
 
-Pass criteria:
+Expected result:
 
-- Revoke completes successfully.
-- Subscription is marked resolved.
+- The selected subscription changes to resolved.
 
-### Test 5: Re-Scan Behavior
+## 5. Confirm Re-Scan Behavior
 
 1. Tap Re-scan.
 2. Wait for refresh.
 
-Pass criteria:
+Expected result:
 
-- Previously revoked merchant remains resolved.
-- Remaining active subscriptions still show correctly.
+- The revoked subscription stays resolved.
+- Other active subscriptions remain visible.
 
-### Test 6: Logout and Resume
+## 6. Confirm Session Persistence
 
 1. Log out.
-2. Log in again with the same user.
+2. Log in again with the same account.
 
-Pass criteria:
+Expected result:
 
-- Latest analysis loads automatically.
-- Resolved state is preserved.
+- Your latest analysis appears automatically.
+- Previously resolved items are still resolved.
 
-### Test 7: API Lifecycle Coverage (AA emulator)
+## 7. Full Feature Test Checklist
 
-Run:
+Use this quick checklist:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\manual_api_smoke.ps1
-```
+- [ ] Sign up and sign in works.
+- [ ] Start AI Analysis shows detected subscriptions.
+- [ ] Risk grouping and reasoning are visible.
+- [ ] Revoke flow completes for at least one item.
+- [ ] Re-scan keeps revoked item resolved.
+- [ ] Logout and login restores latest analysis.
 
-Pass criteria:
+## 8. Simple Troubleshooting
 
-- `health` is `ok`
-- `consentStatus` is `PENDING`
-- `approvedStatus` is `ACTIVE`
-- `fetchStatus` is `PARTIAL` or `COMPLETED`
-- `revokeStatus` is `resolved`
+If you cannot sign in:
 
-## 4. Quick Troubleshooting
+- Check internet connection.
+- Verify email and password.
+- Try password reset.
 
-If app cannot connect to API:
+If analysis does not load:
 
-- Check `BACKEND_MODE` value in the run command.
-- For local mode, confirm FastAPI is running on `127.0.0.1:8000`.
-- For device testing, set `LOCAL_API_HOST`.
+- Close and reopen the app.
+- Tap Re-scan again.
 
-If login fails in local mode:
+If the app feels stuck:
 
-- Confirm Firebase emulators are running.
-- Try creating a fresh user.
-
-If analysis does not appear:
-
-- Tap Re-scan.
-- Check backend logs for request errors.
-
-## 5. Optional Full Regression Command
-
-For a one-command automated health pass:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\run_automated_tests.ps1
-```
+- Restart the app and log in again.

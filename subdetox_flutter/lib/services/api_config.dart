@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 class ApiConfig {
   static const String backendMode = String.fromEnvironment(
     'BACKEND_MODE',
-    defaultValue: 'functions-emulator',
+    defaultValue: 'fastapi-cloud',
   );
 
   static const String backendBaseUrl = String.fromEnvironment(
@@ -28,12 +28,12 @@ class ApiConfig {
 
   static const String cloudRunUrl = String.fromEnvironment(
     'CLOUD_RUN_URL',
-    defaultValue: '',
+    defaultValue: 'https://subdetox-api-wiz4yigmpq-el.a.run.app',
   );
 
   static const bool useEmulator = bool.fromEnvironment(
     'FIREBASE_USE_EMULATOR',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   static String get _host {

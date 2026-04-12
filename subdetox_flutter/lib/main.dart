@@ -24,7 +24,7 @@ Future<void> main() async {
 
     const useEmulator = bool.fromEnvironment(
       'FIREBASE_USE_EMULATOR',
-      defaultValue: true,
+      defaultValue: false,
     );
 
     if (useEmulator) {
