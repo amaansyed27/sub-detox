@@ -1,32 +1,40 @@
-# SubDetox Usage Guide (Hackathon Demo)
+# SubDetox End User Guide (Use + Full Feature Testing)
 
-This guide is optimized for the current architecture:
+This guide is written for an end user who wants to run the app and verify every major feature.
 
-- Firebase: auth + persistence
-- FastAPI: full AA-style emulator API
+## 1. What You Will Validate
 
-## 1. Goal
+By the end of this guide, you will have tested:
 
-Show these outcomes in one flow:
+- Account creation and login
+- Analysis generation from transaction data
+- Risk grouping and subscription reasoning
+- Mandate revoke flow
+- Persisted resolved state after re-scan
+- Session persistence after logout/login
+- AA-style API lifecycle simulation
 
-- Authenticated onboarding
-- AI recurring-charge detection
-- Real backend revoke behavior
-- Persisted resume behavior on next login
-- AA-style consent and data-session emulator capability
+## 2. Choose Your Usage Mode
 
-## 2. Demo Environment Setup
+### Mode A: Live Cloud Backend (recommended for normal usage)
 
-Open three terminals.
+Run the app against Cloud Run:
 
-### Terminal A: Firebase emulators
+```powershell
+cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
+flutter run --dart-define=BACKEND_MODE=fastapi-cloud --dart-define=CLOUD_RUN_URL=https://subdetox-api-wiz4yigmpq-el.a.run.app --dart-define=FIREBASE_USE_EMULATOR=false
+```
+
+### Mode B: Local Full Stack (recommended for deep testing)
+
+Terminal 1:
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
 npx -y firebase-tools@latest emulators:start --only auth,firestore --project subdetox-20260412-8514
 ```
 
-### Terminal B: FastAPI backend
+Terminal 2:
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox
@@ -35,90 +43,116 @@ $env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8081'
 c:/Users/Amaan/Downloads/sub-detox/.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### Terminal C: Flutter app
+Terminal 3:
 
 ```powershell
 cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
 flutter run --dart-define=BACKEND_MODE=fastapi-local --dart-define=FASTAPI_LOCAL_PORT=8000 --dart-define=FIREBASE_USE_EMULATOR=true
 ```
 
-## 3. First Run (New User)
+If you are using a physical phone, also pass `--dart-define=LOCAL_API_HOST=<your_pc_lan_ip>`.
 
-1. Create a user with Email and Password.
-2. Confirm app transitions from login to dashboard.
-3. First-time user should see Start AI Analysis.
+## 3. End-to-End Feature Testing Checklist
 
-Suggested narration:
+### Test 1: Sign Up and Login
 
-"Firebase secures identity and stores state. FastAPI emulates AA lifecycle and analysis APIs."
+1. Open the app.
+2. Create a new account with email and password.
+3. Log in.
 
-## 4. Core Product Walkthrough
+Pass criteria:
 
-### Step A: Analyze
+- App moves from login screen to dashboard.
+
+### Test 2: Start Analysis
 
 1. Tap Start AI Analysis.
-2. Wait for results.
-3. Show risk-tiered sections and confidence/reasoning.
+2. Wait for analysis to complete.
 
-### Step B: Revoke
+Pass criteria:
 
-1. Revoke one high-risk merchant.
-2. Wait for modal sequence completion.
-3. Confirm card resolves.
+- Dashboard shows detected subscriptions.
+- You can see threat/risk grouping and reasoning.
 
-Suggested narration:
+### Test 3: Validate Risk Sections
 
-"Revocation is server-backed and persisted, not a client-only flag."
+1. Review all subscription cards.
+2. Confirm confidence score, merchant, and estimated monthly amount are visible.
 
-### Step C: Persistence
+Pass criteria:
+
+- At least one detected item appears.
+- Grouping is visible and understandable.
+
+### Test 4: Revoke a Subscription
+
+1. Select one high-priority subscription.
+2. Tap Revoke Mandate.
+3. Complete the flow.
+
+Pass criteria:
+
+- Revoke completes successfully.
+- Subscription is marked resolved.
+
+### Test 5: Re-Scan Behavior
 
 1. Tap Re-scan.
-2. Confirm revoked merchant remains resolved.
-3. Sign out and sign in again.
-4. Confirm latest analysis auto-resumes.
+2. Wait for refresh.
 
-## 5. Optional API Demonstration (AA Emulator)
+Pass criteria:
 
-Run this in a fourth terminal to show non-UI API realism:
+- Previously revoked merchant remains resolved.
+- Remaining active subscriptions still show correctly.
+
+### Test 6: Logout and Resume
+
+1. Log out.
+2. Log in again with the same user.
+
+Pass criteria:
+
+- Latest analysis loads automatically.
+- Resolved state is preserved.
+
+### Test 7: API Lifecycle Coverage (AA emulator)
+
+Run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\manual_api_smoke.ps1
 ```
 
-This exercises consent creation, simulated approval, data session creation/fetch, and app-compat analyze/revoke.
+Pass criteria:
 
-## 6. Suggested 7-Minute Hackathon Script
+- `health` is `ok`
+- `consentStatus` is `PENDING`
+- `approvedStatus` is `ACTIVE`
+- `fetchStatus` is `PARTIAL` or `COMPLETED`
+- `revokeStatus` is `resolved`
 
-1. 0:00 to 1:00: Problem statement and architecture split (Firebase + FastAPI)
-2. 1:00 to 2:30: Login gate and Start AI Analysis
-3. 2:30 to 4:00: Results explanation and leakage prioritization
-4. 4:00 to 5:00: Revoke and immediate resolved state
-5. 5:00 to 6:00: Re-scan and login-resume persistence
-6. 6:00 to 7:00: Optional API smoke output for AA-style lifecycle proof
+## 4. Quick Troubleshooting
 
-## 7. Quick Recovery During Live Demo
+If app cannot connect to API:
 
-If app cannot reach backend:
+- Check `BACKEND_MODE` value in the run command.
+- For local mode, confirm FastAPI is running on `127.0.0.1:8000`.
+- For device testing, set `LOCAL_API_HOST`.
 
-- Verify FastAPI terminal is running at `127.0.0.1:8000`
-- Verify Flutter started with `BACKEND_MODE=fastapi-local`
-- For physical device, pass `LOCAL_API_HOST=<LAN_IP>`
+If login fails in local mode:
 
-If auth fails:
+- Confirm Firebase emulators are running.
+- Try creating a fresh user.
 
-- Confirm auth emulator is running (`:9099`)
-- Create a fresh demo user
+If analysis does not appear:
 
-If data looks stale:
+- Tap Re-scan.
+- Check backend logs for request errors.
 
-- Re-run analysis
-- Check Firestore emulator UI for fresh writes
+## 5. Optional Full Regression Command
 
-## 8. Presenter Checklist
+For a one-command automated health pass:
 
-- Firebase emulator visible
-- FastAPI terminal visible
-- Flutter app running and warm
-- Backup demo account available
-- [self-testing-guide.md](self-testing-guide.md) open for QA follow-ups
-- [cloud-run-deploy-guide.md](cloud-run-deploy-guide.md) ready for deployment questions
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\run_automated_tests.ps1
+```

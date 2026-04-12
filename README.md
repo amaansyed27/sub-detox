@@ -1,119 +1,97 @@
 # SubDetox
 
-SubDetox is an AI-powered financial auditor for recurring wealth leakage (subscriptions, silent auto-debits, telecom VAS).
+SubDetox helps users detect and stop recurring financial leakage from subscriptions, silent auto-debits, and low-visibility mandate charges.
 
-This codebase now follows a hybrid architecture:
+## Core Features
 
-- Firebase is used for authentication, storage, and persistence.
-- Python FastAPI is the primary app-facing API and AA-style emulator runtime (Cloud Run target).
+- Secure sign-up and sign-in with Firebase Auth.
+- AI-driven recurring charge detection from account transaction data.
+- Risk-prioritized subscription cards with confidence and reasoning.
+- In-flow mandate revoke simulation with persisted resolution state.
+- Resume latest analysis on next login without re-running from scratch.
+- AA-style consent and FI session lifecycle emulation for realistic sandbox behavior.
 
-## Current Architecture
+## Architecture
+
+SubDetox is built as a hybrid platform:
+
+- Flutter app for user experience and stateful dashboard flows.
+- FastAPI service for AA-style orchestration, analysis, and revoke APIs.
+- Firebase for identity and persistent storage.
+- Cloud Run for managed backend runtime.
 
 ```mermaid
-flowchart TD
-    U[User] --> F[Flutter App\nsubdetox_flutter]
+flowchart LR
+    User[End User] --> App[Flutter App]
 
-    subgraph FE[Frontend]
-      A[Firebase Auth\nEmail + Phone]
-      D[Dashboard\nAnalyze + Revoke + Resume]
-      F --> A --> D
+    subgraph Identity[Identity Layer]
+      Auth[Firebase Auth]
     end
 
-    D -->|Bearer Firebase ID token| API[FastAPI AA Emulator\nCloud Run target]
-
-    subgraph DATA[Firebase Data Layer]
-      DB[(Firestore)]
+    subgraph Service[Backend Layer]
+      API[FastAPI AA Emulator]
+      Engine[Subscription Analysis Engine]
     end
 
-    API --> DB
-    DB --> D
+    subgraph Data[Data Layer]
+      Store[(Firestore)]
+    end
 
-    FB[Legacy Firebase Functions\nFallback during migration] -.optional rollback.- API
+    App -->|ID token| Auth
+    App -->|Bearer token| API
+    API --> Engine
+    Engine --> API
+    API --> Store
+    Store --> App
 ```
 
-## API Surfaces
+### Runtime Flow
 
-Primary AA-style v2 emulator APIs:
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Flutter App
+    participant F as Firebase Auth
+    participant B as FastAPI
+    participant D as Firestore
 
-- `POST /v2/account-availability`
-- `GET /v2/fips`
-- `GET /v2/fips/:id`
-- `POST /v2/consents`
-- `GET /v2/consents/:id`
-- `POST /v2/consents/:id/revoke`
-- `GET /v2/consents/:id/fetch/status`
-- `GET /v2/consents/:id/data-sessions`
-- `POST /v2/consents/collection`
-- `POST /v2/sessions`
-- `GET /v2/sessions/:id`
-- `GET /v2/consents/webview/:id` (hosted-like consent page)
-- `POST /v2/simulator/consents/:id/action`
-- `GET /v2/notifications/events`
-
-App-compat APIs retained for Flutter continuity:
-
-- `GET /api/me`
-- `GET /api/mock-aa-data`
-- `POST /api/analyze-transactions`
-- `GET /api/analysis/latest`
-- `POST /api/revoke-mandate`
-
-## Local Development
-
-### 1) Install dependencies
-
-```powershell
-cd C:\Users\Amaan\Downloads\sub-detox
-c:/Users/Amaan/Downloads/sub-detox/.venv/Scripts/python.exe -m pip install -r requirements.txt
-cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter pub get
+    U->>A: Sign in and start analysis
+    A->>F: Authenticate
+    F-->>A: ID token
+    A->>B: Analyze request + token
+    B->>D: Persist run and subscriptions
+    B-->>A: Risk-grouped results
+    U->>A: Revoke selected merchant
+    A->>B: Revoke request
+    B->>D: Mark subscription resolved
+    B-->>A: Updated state
 ```
 
-### 2) Start Firebase emulators for auth and Firestore
+## Tech Stack
 
-```powershell
-cd C:\Users\Amaan\Downloads\sub-detox
-npx -y firebase-tools@latest emulators:start --only auth,firestore --project subdetox-20260412-8514
-```
+- Frontend: Flutter, Dart, Provider.
+- Backend API: Python, FastAPI, Uvicorn, Pydantic.
+- Auth and Data: Firebase Auth, Firestore, Firebase Admin SDK.
+- Deployment: Cloud Run, Cloud Build, Container Registry (gcr.io).
+- Validation: pytest, PowerShell smoke scripts, Flutter analyzer.
 
-### 3) Start FastAPI locally
+## API Design
 
-```powershell
-cd C:\Users\Amaan\Downloads\sub-detox
-$env:USE_FIRESTORE_EMULATOR='true'
-$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8081'
-c:/Users/Amaan/Downloads/sub-detox/.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
+The backend exposes two complementary API surfaces:
 
-### 4) Run Flutter against local FastAPI
+- AA-style v2 simulator APIs for consent/session/FIP/account-availability lifecycles.
+- App-compat APIs used by the Flutter dashboard (`/api/me`, `/api/analyze-transactions`, `/api/analysis/latest`, `/api/revoke-mandate`).
 
-```powershell
-cd C:\Users\Amaan\Downloads\sub-detox\subdetox_flutter
-flutter run --dart-define=BACKEND_MODE=fastapi-local --dart-define=FASTAPI_LOCAL_PORT=8000 --dart-define=FIREBASE_USE_EMULATOR=true
-```
+## Repository Layout
 
-For physical device local testing, also pass `--dart-define=LOCAL_API_HOST=<LAN_IP_OF_YOUR_PC>`.
-
-## Testing
-
-Automated checks:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\run_automated_tests.ps1
-```
-
-Manual API smoke:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\Users\Amaan\Downloads\sub-detox\scripts\manual_api_smoke.ps1
-```
-
-## Deployment
-
-Cloud Run deployment steps are documented in [cloud-run-deploy-guide.md](cloud-run-deploy-guide.md).
+- `app/`: FastAPI app (routes, services, schemas, dependencies).
+- `subdetox_flutter/`: Flutter application.
+- `tests/`: Python integration tests for v2 and app-compat flows.
+- `scripts/`: Automated and manual verification scripts.
+- `functions/`: Legacy Firebase Functions path kept for fallback compatibility.
 
 ## Documentation
 
-- [self-testing-guide.md](self-testing-guide.md)
-- [usage-guide.md](usage-guide.md)
-- [cloud-run-deploy-guide.md](cloud-run-deploy-guide.md)
+- [usage-guide.md](usage-guide.md) - end-user usage and full feature testing.
+- [self-testing-guide.md](self-testing-guide.md) - engineering QA runbook.
+- [cloud-run-deploy-guide.md](cloud-run-deploy-guide.md) - deployment guide.
