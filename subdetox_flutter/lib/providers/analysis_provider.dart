@@ -11,7 +11,8 @@ import '../services/analysis_api_service.dart';
 enum DashboardState { initial, analyzing, results, error }
 
 class AnalysisProvider extends ChangeNotifier {
-  AnalysisProvider({required AnalysisApiService apiService}) : _apiService = apiService;
+  AnalysisProvider({required AnalysisApiService apiService})
+      : _apiService = apiService;
 
   final AnalysisApiService _apiService;
   AuthProvider? _authProvider;
@@ -27,10 +28,13 @@ class AnalysisProvider extends ChangeNotifier {
   AnalyzeTransactionsResponse? get analysis => _analysis;
   String? get errorMessage => _errorMessage;
 
-  void updateAuthProvider(AuthProvider authProvider) {
+  void updateAuthProvider(
+    AuthProvider authProvider, {
+    required bool canLoadAnalysis,
+  }) {
     _authProvider = authProvider;
 
-    if (!authProvider.isAuthenticated) {
+    if (!authProvider.isAuthenticated || !canLoadAnalysis) {
       _wasAuthenticated = false;
       _resetForSignedOutUser();
       return;
@@ -90,7 +94,8 @@ class AnalysisProvider extends ChangeNotifier {
     }
   }
 
-  bool isResolved(String merchantCode) => _resolvedMerchantCodes.contains(merchantCode);
+  bool isResolved(String merchantCode) =>
+      _resolvedMerchantCodes.contains(merchantCode);
 
   List<DetectedSubscription> get immediateActionRequired {
     return _filteredByThreat(ThreatLevel.high);
@@ -194,8 +199,7 @@ class AnalysisProvider extends ChangeNotifier {
   }
 
   void _resetForSignedOutUser() {
-    final hasDashboardState =
-        _state != DashboardState.initial ||
+    final hasDashboardState = _state != DashboardState.initial ||
         _analysis != null ||
         _errorMessage != null ||
         _resolvedMerchantCodes.isNotEmpty;

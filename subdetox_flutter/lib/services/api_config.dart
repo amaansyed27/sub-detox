@@ -117,6 +117,10 @@ class ApiConfig {
 
   static Uri get meUri => _uri('/me');
 
+  static Uri get accountAvailabilityUri => _uri('/v2/account-availability');
+
+  static Uri get accountSelectionUri => _uri('/v2/account-selection');
+
   static Map<String, String> authHeaders(String idToken) {
     return {
       'Content-Type': 'application/json',

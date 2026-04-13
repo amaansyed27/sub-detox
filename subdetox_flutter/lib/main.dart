@@ -4,8 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/account_linking_provider.dart';
 import 'providers/analysis_provider.dart';
 import 'providers/auth_provider.dart';
+import 'screens/account_linking_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/analysis_api_service.dart';
@@ -28,9 +30,10 @@ Future<void> main() async {
     );
 
     if (useEmulator) {
-      final emulatorHost = kIsWeb || defaultTargetPlatform != TargetPlatform.android
-          ? '127.0.0.1'
-          : '10.0.2.2';
+      final emulatorHost =
+          kIsWeb || defaultTargetPlatform != TargetPlatform.android
+              ? '127.0.0.1'
+              : '10.0.2.2';
       await FirebaseAuth.instance.useAuthEmulator(emulatorHost, 9099);
     }
   } catch (error) {
@@ -61,12 +64,30 @@ class SubDetoxApp extends StatelessWidget {
         ChangeNotifierProvider<AuthProvider>(
           create: (_) => AuthProvider(authService: AuthService()),
         ),
-        ChangeNotifierProxyProvider<AuthProvider, AnalysisProvider>(
-          create: (_) => AnalysisProvider(apiService: const AnalysisApiService()),
-          update: (_, authProvider, analysisProvider) {
-            final provider =
-                analysisProvider ?? AnalysisProvider(apiService: const AnalysisApiService());
+        ChangeNotifierProxyProvider<AuthProvider, AccountLinkingProvider>(
+          create: (_) =>
+              AccountLinkingProvider(apiService: const AnalysisApiService()),
+          update: (_, authProvider, linkingProvider) {
+            final provider = linkingProvider ??
+                AccountLinkingProvider(apiService: const AnalysisApiService());
             provider.updateAuthProvider(authProvider);
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider2<AuthProvider, AccountLinkingProvider,
+            AnalysisProvider>(
+          create: (_) =>
+              AnalysisProvider(apiService: const AnalysisApiService()),
+          update: (_, authProvider, accountLinkingProvider, analysisProvider) {
+            final provider = analysisProvider ??
+                AnalysisProvider(apiService: const AnalysisApiService());
+            provider.updateAuthProvider(
+              authProvider,
+              canLoadAnalysis: authProvider.isAuthenticated &&
+                  accountLinkingProvider.state ==
+                      AccountLinkingState.completed &&
+                  !accountLinkingProvider.needsOnboarding,
+            );
             return provider;
           },
         ),
@@ -75,12 +96,31 @@ class SubDetoxApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'SubDetox',
         theme: AppTheme.lightTheme,
-        home: Consumer<AuthProvider>(
-          builder: (context, authProvider, _) {
+        home: Consumer2<AuthProvider, AccountLinkingProvider>(
+          builder: (context, authProvider, accountLinkingProvider, _) {
             switch (authProvider.status) {
               case AuthStatus.initializing:
                 return const _AuthLoadingScreen();
               case AuthStatus.authenticated:
+                final accountLinkingState = accountLinkingProvider.state;
+                final waitingForLinkingState =
+                    accountLinkingState == AccountLinkingState.idle ||
+                        accountLinkingState == AccountLinkingState.loading;
+
+                if (waitingForLinkingState) {
+                  return const _AuthLoadingScreen();
+                }
+
+                final needsAccountLinking =
+                    accountLinkingProvider.needsOnboarding ||
+                        accountLinkingState == AccountLinkingState.ready ||
+                        accountLinkingState == AccountLinkingState.saving ||
+                        accountLinkingState == AccountLinkingState.error;
+
+                if (needsAccountLinking) {
+                  return const AccountLinkingScreen();
+                }
+
                 return const DashboardScreen();
               case AuthStatus.unauthenticated:
               case AuthStatus.error:
@@ -120,7 +160,8 @@ class _BootstrapErrorScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 32),
+              const Icon(Icons.error_outline,
+                  color: Color(0xFFDC2626), size: 32),
               const SizedBox(height: 12),
               Text(
                 'Firebase bootstrap failed',

@@ -26,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
   String? _verificationId;
   int? _resendToken;
   String? _lastPhoneNumber;
+  String? _verifiedPhoneNumber;
   int _otpCooldownSeconds = 0;
 
   AuthStatus get status => _status;
@@ -37,6 +38,8 @@ class AuthProvider extends ChangeNotifier {
   int get otpCooldownSeconds => _otpCooldownSeconds;
   bool get canResendOtp => otpRequested && _otpCooldownSeconds == 0;
   String? get lastPhoneNumber => _lastPhoneNumber;
+  String? get activePhoneNumber =>
+      _verifiedPhoneNumber ?? _authService.currentPhoneNumber;
 
   String get otpCooldownLabel {
     final minutes = (_otpCooldownSeconds ~/ 60).toString().padLeft(2, '0');
@@ -129,6 +132,12 @@ class AuthProvider extends ChangeNotifier {
   void _onAuthStateChanged(User? user) {
     _status =
         user == null ? AuthStatus.unauthenticated : AuthStatus.authenticated;
+    if (user == null) {
+      _verifiedPhoneNumber = null;
+    } else if ((_verifiedPhoneNumber ?? '').isEmpty &&
+        (user.phoneNumber ?? '').isNotEmpty) {
+      _verifiedPhoneNumber = user.phoneNumber;
+    }
     _errorMessage = null;
     notifyListeners();
   }
@@ -223,6 +232,7 @@ class AuthProvider extends ChangeNotifier {
         },
         onVerificationCompleted: (credential) async {
           await FirebaseAuth.instance.signInWithCredential(credential);
+          _verifiedPhoneNumber = normalized;
           _verificationId = null;
           _resendToken = null;
           _lastPhoneNumber = null;
@@ -300,6 +310,8 @@ class AuthProvider extends ChangeNotifier {
         verificationId: verificationId,
         smsCode: smsCode,
       );
+      _verifiedPhoneNumber =
+          _lastPhoneNumber ?? _authService.currentPhoneNumber;
       _verificationId = null;
       _resendToken = null;
       _lastPhoneNumber = null;
@@ -322,6 +334,7 @@ class AuthProvider extends ChangeNotifier {
       _verificationId = null;
       _resendToken = null;
       _lastPhoneNumber = null;
+      _verifiedPhoneNumber = null;
       _otpTimer?.cancel();
       _otpCooldownSeconds = 0;
       await _authService.signOut();

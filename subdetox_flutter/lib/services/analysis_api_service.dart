@@ -3,12 +3,82 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/analyze_transactions_response.dart';
+import '../models/linked_bank_models.dart';
 import 'api_config.dart';
 
 class AnalysisApiService {
   const AnalysisApiService();
 
-  Future<AnalyzeTransactionsResponse?> fetchLatestAnalysis(String idToken) async {
+  Future<UserSelectionProfile> fetchUserSelectionProfile(String idToken) async {
+    final response = await http.get(
+      ApiConfig.meUri,
+      headers: ApiConfig.authHeaders(idToken),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return UserSelectionProfile.fromJson(decoded);
+    }
+
+    throw AnalysisApiException(
+      'Failed to fetch user profile. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<AccountAvailabilityResponse> fetchAccountAvailability({
+    required String idToken,
+    required String mobileNumber,
+  }) async {
+    final response = await http.post(
+      ApiConfig.accountAvailabilityUri,
+      headers: ApiConfig.authHeaders(idToken),
+      body: jsonEncode({'mobileNumber': mobileNumber}),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return AccountAvailabilityResponse.fromJson(decoded);
+    }
+
+    throw AnalysisApiException(
+      'Failed to fetch linked bank accounts. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<AccountSelectionResponse> saveAccountSelection({
+    required String idToken,
+    required String mobileNumber,
+    required List<String> selectedLinkRefNumbers,
+  }) async {
+    final response = await http.post(
+      ApiConfig.accountSelectionUri,
+      headers: ApiConfig.authHeaders(idToken),
+      body: jsonEncode(
+        {
+          'mobileNumber': mobileNumber,
+          'selectedLinkRefNumbers': selectedLinkRefNumbers,
+        },
+      ),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return AccountSelectionResponse.fromJson(decoded);
+    }
+
+    throw AnalysisApiException(
+      'Failed to save selected accounts. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<AnalyzeTransactionsResponse?> fetchLatestAnalysis(
+      String idToken) async {
     final response = await http.get(
       ApiConfig.latestAnalysisUri,
       headers: ApiConfig.authHeaders(idToken),
@@ -30,7 +100,8 @@ class AnalysisApiService {
     );
   }
 
-  Future<AnalyzeTransactionsResponse> analyzeTransactions(String idToken) async {
+  Future<AnalyzeTransactionsResponse> analyzeTransactions(
+      String idToken) async {
     final response = await http.post(
       ApiConfig.analyzeTransactionsUri,
       headers: ApiConfig.authHeaders(idToken),
