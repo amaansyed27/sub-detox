@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import hashlib
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from uuid import uuid4
@@ -34,6 +34,9 @@ from app.schemas.aa_v2 import (
 from app.services.analysis_service import SubscriptionAnalysisService
 from app.services.datastore import BaseDataStore, utc_now
 from app.services.mock_aa_service import MockAAService
+
+if TYPE_CHECKING:
+    from app.services.gemini_analysis_service import GeminiAnalysisService
 
 
 FIP_CATALOG: tuple[dict[str, Any], ...] = (
@@ -70,10 +73,12 @@ class AAGatewayService:
         store: BaseDataStore,
         analysis_service: SubscriptionAnalysisService | None = None,
         mock_aa_service: MockAAService | None = None,
+        gemini_analysis_service: "GeminiAnalysisService | None" = None,
     ) -> None:
         self._store = store
         self._analysis_service = analysis_service or SubscriptionAnalysisService()
         self._mock_aa_service = mock_aa_service or MockAAService()
+        self._gemini_analysis_service = gemini_analysis_service
 
     @staticmethod
     def _trace_id() -> str:
@@ -1089,6 +1094,24 @@ class AAGatewayService:
             )
 
         analysis = self._analysis_service.analyze(payload)
+        analysis_source = "RULES_ENGINE"
+        gemini_error: str | None = None
+        if self._gemini_analysis_service is not None:
+            try:
+                analysis = self._gemini_analysis_service.enrich_analysis(
+                    payload=payload,
+                    analysis=analysis,
+                )
+                analysis_source = "RULES_PLUS_GEMINI"
+            except Exception as exc:  # noqa: BLE001
+                gemini_error = str(exc)
+                analysis_source = "RULES_FALLBACK"
+                if not settings.gemini_fallback_on_error:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="Gemini enrichment failed and fallback is disabled.",
+                    ) from exc
+
         generated_at = utc_now()
 
         run_id = str(uuid4())
@@ -1101,6 +1124,8 @@ class AAGatewayService:
                 "totalMonthlyLeakage": float(analysis.total_monthly_leakage),
                 "currency": analysis.currency,
                 "source": payload.txnid,
+                "analysisSource": analysis_source,
+                "geminiError": gemini_error,
                 "createdAt": utc_now(),
             }
         )
@@ -1158,6 +1183,8 @@ class AAGatewayService:
                 "runId": run_id,
                 "detectedCount": len(detected_rows),
                 "totalMonthlyLeakage": float(analysis.total_monthly_leakage),
+                "analysisSource": analysis_source,
+                "geminiError": gemini_error,
                 "createdAt": utc_now(),
             }
         )

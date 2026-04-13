@@ -55,6 +55,23 @@ class Settings(BaseModel):
         ge=0.5,
         le=30,
     )
+    gemini_analysis_enabled: bool = Field(
+        default_factory=lambda: _env_bool("GEMINI_ANALYSIS_ENABLED", False)
+    )
+    gemini_api_key: str = Field(
+        default_factory=lambda: os.getenv("GEMINI_API_KEY", "")
+    )
+    gemini_model: str = Field(
+        default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    )
+    gemini_timeout_seconds: float = Field(
+        default_factory=lambda: float(os.getenv("GEMINI_TIMEOUT_SECONDS", "8")),
+        ge=1,
+        le=60,
+    )
+    gemini_fallback_on_error: bool = Field(
+        default_factory=lambda: _env_bool("GEMINI_FALLBACK_ON_ERROR", True)
+    )
     public_base_url: str = Field(
         default_factory=lambda: os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000")
     )
