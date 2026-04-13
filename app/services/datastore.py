@@ -17,6 +17,17 @@ class BaseDataStore:
     def get_user_profile(self, user_id: str) -> dict[str, Any] | None:
         raise NotImplementedError
 
+    def set_user_selected_accounts(
+        self,
+        user_id: str,
+        mobile_number: str,
+        selected_accounts: list[dict[str, Any]],
+    ) -> None:
+        raise NotImplementedError
+
+    def get_user_selected_accounts(self, user_id: str) -> dict[str, Any] | None:
+        raise NotImplementedError
+
     def create_consent(self, record: dict[str, Any]) -> None:
         raise NotImplementedError
 
@@ -97,6 +108,9 @@ class InMemoryDataStore(BaseDataStore):
             "userId": user_id,
             "email": email,
             "phoneNumber": phone_number,
+            "selectedAccounts": deepcopy(current.get("selectedAccounts", [])),
+            "selectionMobileNumber": current.get("selectionMobileNumber"),
+            "selectionUpdatedAt": current.get("selectionUpdatedAt"),
             "createdAt": current.get("createdAt", now),
             "updatedAt": now,
         }
@@ -104,6 +118,38 @@ class InMemoryDataStore(BaseDataStore):
     def get_user_profile(self, user_id: str) -> dict[str, Any] | None:
         user = self.users.get(user_id)
         return deepcopy(user) if user else None
+
+    def set_user_selected_accounts(
+        self,
+        user_id: str,
+        mobile_number: str,
+        selected_accounts: list[dict[str, Any]],
+    ) -> None:
+        now = utc_now()
+        current = deepcopy(self.users.get(user_id, {}))
+        self.users[user_id] = {
+            "userId": user_id,
+            "email": current.get("email"),
+            "phoneNumber": current.get("phoneNumber"),
+            "selectedAccounts": deepcopy(selected_accounts),
+            "selectionMobileNumber": mobile_number,
+            "selectionUpdatedAt": now,
+            "createdAt": current.get("createdAt", now),
+            "updatedAt": now,
+        }
+
+    def get_user_selected_accounts(self, user_id: str) -> dict[str, Any] | None:
+        user = self.users.get(user_id)
+        if not user:
+            return None
+        selected_accounts = user.get("selectedAccounts")
+        if not isinstance(selected_accounts, list):
+            return None
+        return {
+            "mobileNumber": user.get("selectionMobileNumber"),
+            "selectedAccounts": deepcopy(selected_accounts),
+            "updatedAt": user.get("selectionUpdatedAt"),
+        }
 
     def create_consent(self, record: dict[str, Any]) -> None:
         self.consents[record["id"]] = deepcopy(record)
@@ -247,6 +293,36 @@ class FirestoreDataStore(BaseDataStore):
             return None
         data = doc.to_dict() or {}
         return {"id": doc.id, **data}
+
+    def set_user_selected_accounts(
+        self,
+        user_id: str,
+        mobile_number: str,
+        selected_accounts: list[dict[str, Any]],
+    ) -> None:
+        self._db.collection("users").document(user_id).set(
+            {
+                "selectionMobileNumber": mobile_number,
+                "selectedAccounts": deepcopy(selected_accounts),
+                "selectionUpdatedAt": utc_now(),
+                "updatedAt": utc_now(),
+            },
+            merge=True,
+        )
+
+    def get_user_selected_accounts(self, user_id: str) -> dict[str, Any] | None:
+        doc = self._db.collection("users").document(user_id).get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict() or {}
+        selected_accounts = data.get("selectedAccounts")
+        if not isinstance(selected_accounts, list):
+            return None
+        return {
+            "mobileNumber": data.get("selectionMobileNumber"),
+            "selectedAccounts": deepcopy(selected_accounts),
+            "updatedAt": data.get("selectionUpdatedAt"),
+        }
 
     def create_consent(self, record: dict[str, Any]) -> None:
         self._db.collection("consents").document(record["id"]).set(record)

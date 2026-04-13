@@ -153,8 +153,39 @@ class AccountAvailabilityItem(AAV2BaseModel):
     status: bool
 
 
+class LinkedBankAccount(AAV2BaseModel):
+    fip_id: str = Field(alias="fipId")
+    link_ref_number: str = Field(alias="linkRefNumber")
+    masked_acc_number: str = Field(alias="maskedAccNumber")
+    acc_type: str = Field(alias="accType")
+    fi_type: str = Field(alias="fiType")
+    nickname: str
+
+
+class LinkedBankInstitution(AAV2BaseModel):
+    fip_id: str = Field(alias="fipId")
+    bank_name: str = Field(alias="bankName")
+    status: str
+    accounts: list[LinkedBankAccount]
+
+
 class AccountAvailabilityResponse(AAV2BaseModel):
     accounts: list[AccountAvailabilityItem]
+    linked_banks: list[LinkedBankInstitution] = Field(default_factory=list, alias="linkedBanks")
+    trace_id: str = Field(alias="traceId")
+
+
+class AccountSelectionRequest(AAV2BaseModel):
+    mobile_number: str = Field(alias="mobileNumber")
+    selected_link_ref_numbers: list[str] = Field(
+        default_factory=list,
+        alias="selectedLinkRefNumbers",
+    )
+
+
+class AccountSelectionResponse(AAV2BaseModel):
+    status: str
+    selected_accounts: list[LinkedBankAccount] = Field(alias="selectedAccounts")
     trace_id: str = Field(alias="traceId")
 
 

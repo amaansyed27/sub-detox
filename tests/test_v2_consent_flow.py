@@ -12,6 +12,24 @@ def _data_range() -> dict[str, str]:
 
 
 def test_v2_consent_session_lifecycle(client):
+    availability = client.post(
+        "/v2/account-availability",
+        json={"mobileNumber": "9999999999"},
+    )
+    assert availability.status_code == 200
+    linked_banks = availability.json()["linkedBanks"]
+    assert linked_banks
+    selected_account = linked_banks[0]["accounts"][0]
+
+    selection = client.post(
+        "/v2/account-selection",
+        json={
+            "mobileNumber": "9999999999",
+            "selectedLinkRefNumbers": [selected_account["linkRefNumber"]],
+        },
+    )
+    assert selection.status_code == 200
+
     consent_create = client.post(
         "/v2/consents",
         json={
@@ -20,7 +38,7 @@ def test_v2_consent_session_lifecycle(client):
             "fiTypes": ["DEPOSIT"],
             "consentTypes": ["PROFILE", "SUMMARY", "TRANSACTIONS"],
             "dataRange": _data_range(),
-            "context": [{"key": "fipId", "value": "setu-fip,setu-fip-2"}],
+            "context": [{"key": "fipId", "value": selected_account["fipId"]}],
             "additionalParams": {
                 "tags": ["hackathon", "revamp"],
                 "notificationUrl": "https://example.invalid/webhook",
@@ -31,6 +49,11 @@ def test_v2_consent_session_lifecycle(client):
     consent = consent_create.json()
     assert consent["status"] == "PENDING"
     assert "/v2/consents/webview/" in consent["url"]
+    assert len(consent["accountsLinked"]) == 1
+    assert (
+        consent["accountsLinked"][0]["linkRefNumber"]
+        == selected_account["linkRefNumber"]
+    )
 
     consent_id = consent["id"]
 

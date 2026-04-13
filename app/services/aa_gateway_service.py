@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import hashlib
 import json
-import random
 from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
@@ -18,6 +17,8 @@ from app.dependencies.auth import CurrentUser
 from app.schemas.aa import AAMockDataResponse
 from app.schemas.aa_v2 import (
     AccountAvailabilityResponse,
+    AccountSelectionRequest,
+    AccountSelectionResponse,
     ConsentCollectionRequest,
     ConsentCollectionResponse,
     ConsentDataSessionsResponse,
@@ -89,8 +90,26 @@ class AAGatewayService:
 
     @staticmethod
     def _mask_account(account_seed: str) -> str:
-        suffix = str(abs(hash(account_seed)) % 10000).zfill(4)
+        digest = hashlib.sha256(account_seed.encode("utf-8")).hexdigest()
+        suffix = str(int(digest[:10], 16) % 10000).zfill(4)
         return f"XXXXXXXX{suffix}"
+
+    @staticmethod
+    def _normalize_mobile(mobile_number: str) -> str:
+        digits = "".join(ch for ch in mobile_number if ch.isdigit())
+        if len(digits) > 10:
+            digits = digits[-10:]
+        return digits
+
+    @classmethod
+    def _extract_mobile_from_vua(cls, vua: str) -> str:
+        handle = vua.split("@", 1)[0]
+        return cls._normalize_mobile(handle)
+
+    @staticmethod
+    def _link_ref_number(account_seed: str) -> str:
+        digest = hashlib.sha256(account_seed.encode("utf-8")).hexdigest().upper()
+        return f"LNK{digest[:12]}"
 
     @staticmethod
     def _to_iso(value: Any) -> str:
@@ -111,6 +130,76 @@ class AAGatewayService:
         if isinstance(value, str):
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
         return utc_now()
+
+    def _deterministic_linked_banks(
+        self,
+        user: CurrentUser,
+        mobile_number: str,
+    ) -> list[dict[str, Any]]:
+        normalized_mobile = self._normalize_mobile(mobile_number)
+        if not normalized_mobile:
+            normalized_mobile = mobile_number.strip()
+
+        linked_banks: list[dict[str, Any]] = []
+        for fip in FIP_CATALOG:
+            seed_base = f"{user.uid}:{normalized_mobile}:{fip['fipId']}"
+            include_bank = (
+                fip["status"] == "ACTIVE"
+                or self._hash_ratio(seed_base + ":include") >= 0.55
+            )
+            if not include_bank:
+                continue
+
+            account_count = 2 if self._hash_ratio(seed_base + ":count") > 0.62 else 1
+            accounts: list[dict[str, Any]] = []
+            for index in range(account_count):
+                account_seed = f"{seed_base}:{index}"
+                account_type = "SAVINGS"
+                if index == 1 and self._hash_ratio(account_seed + ":type") > 0.45:
+                    account_type = "CURRENT"
+
+                accounts.append(
+                    {
+                        "fipId": fip["fipId"],
+                        "linkRefNumber": self._link_ref_number(account_seed),
+                        "maskedAccNumber": self._mask_account(account_seed),
+                        "accType": account_type,
+                        "fiType": "DEPOSIT",
+                        "nickname": "Primary" if index == 0 else "Secondary",
+                    }
+                )
+
+            linked_banks.append(
+                {
+                    "fipId": fip["fipId"],
+                    "bankName": fip["name"],
+                    "status": fip["status"],
+                    "accounts": accounts,
+                }
+            )
+
+        if linked_banks:
+            return linked_banks
+
+        fallback_fip = FIP_CATALOG[0]
+        fallback_seed = f"{user.uid}:{normalized_mobile}:{fallback_fip['fipId']}:0"
+        return [
+            {
+                "fipId": fallback_fip["fipId"],
+                "bankName": fallback_fip["name"],
+                "status": fallback_fip["status"],
+                "accounts": [
+                    {
+                        "fipId": fallback_fip["fipId"],
+                        "linkRefNumber": self._link_ref_number(fallback_seed),
+                        "maskedAccNumber": self._mask_account(fallback_seed),
+                        "accType": "SAVINGS",
+                        "fiType": "DEPOSIT",
+                        "nickname": "Primary",
+                    }
+                ],
+            }
+        ]
 
     def list_active_fips(
         self,
@@ -187,29 +276,102 @@ class AAGatewayService:
             {"data": [entry.model_dump(by_alias=True) for entry in filtered], "traceId": self._trace_id()}
         )
 
-    def account_availability(self, mobile_number: str) -> AccountAvailabilityResponse:
-        last_digit = int(mobile_number[-1]) if mobile_number and mobile_number[-1].isdigit() else 0
+    def account_availability(
+        self,
+        user: CurrentUser,
+        mobile_number: str,
+    ) -> AccountAvailabilityResponse:
+        normalized_mobile = self._normalize_mobile(mobile_number)
+        lookup_mobile = normalized_mobile or mobile_number
+        last_digit = (
+            int(lookup_mobile[-1]) if lookup_mobile and lookup_mobile[-1].isdigit() else 0
+        )
+        linked_banks = self._deterministic_linked_banks(user=user, mobile_number=lookup_mobile)
         response = {
             "accounts": [
                 {
                     "aa": "onemoney",
-                    "vua": f"{mobile_number}@onemoney",
+                    "vua": f"{lookup_mobile}@onemoney",
                     "status": last_digit % 2 == 0,
                 },
                 {
                     "aa": "setu",
-                    "vua": f"{mobile_number}@setu",
+                    "vua": f"{lookup_mobile}@setu",
                     "status": True,
                 },
                 {
                     "aa": "anumati",
-                    "vua": f"{mobile_number}@anumati",
+                    "vua": f"{lookup_mobile}@anumati",
                     "status": last_digit % 3 != 1,
                 },
             ],
+            "linkedBanks": linked_banks,
             "traceId": self._trace_id(),
         }
         return AccountAvailabilityResponse.model_validate(response)
+
+    def save_account_selection(
+        self,
+        user: CurrentUser,
+        request_body: AccountSelectionRequest,
+    ) -> AccountSelectionResponse:
+        normalized_mobile = self._normalize_mobile(request_body.mobile_number)
+        if not normalized_mobile:
+            raise HTTPException(status_code=400, detail="Invalid mobile number.")
+
+        requested_refs = [
+            ref.strip()
+            for ref in request_body.selected_link_ref_numbers
+            if ref.strip()
+        ]
+        if not requested_refs:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one linked account selection is required.",
+            )
+
+        linked_banks = self._deterministic_linked_banks(user=user, mobile_number=normalized_mobile)
+        discovered_by_ref: dict[str, dict[str, Any]] = {}
+        for bank in linked_banks:
+            for account in bank.get("accounts", []):
+                discovered_by_ref[account["linkRefNumber"]] = account
+
+        selected_accounts: list[dict[str, Any]] = []
+        seen_refs: set[str] = set()
+        for ref in requested_refs:
+            account = discovered_by_ref.get(ref)
+            if account is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unknown linked account selection: {ref}",
+                )
+            if ref in seen_refs:
+                continue
+            seen_refs.add(ref)
+            selected_accounts.append(account)
+
+        self._store.set_user_selected_accounts(
+            user_id=user.uid,
+            mobile_number=normalized_mobile,
+            selected_accounts=selected_accounts,
+        )
+        self._store.create_audit_event(
+            {
+                "userId": user.uid,
+                "eventType": "ACCOUNT_SELECTION_SAVED",
+                "mobileNumber": normalized_mobile,
+                "selectedAccountCount": len(selected_accounts),
+                "createdAt": utc_now(),
+            }
+        )
+
+        return AccountSelectionResponse.model_validate(
+            {
+                "status": "SAVED",
+                "selectedAccounts": selected_accounts,
+                "traceId": self._trace_id(),
+            }
+        )
 
     def _compute_expiry(self, request_body: CreateConsentRequest, consent_start: datetime) -> datetime:
         if request_body.consent_duration is not None:
@@ -242,6 +404,77 @@ class AAGatewayService:
 
         return selected or ["setu-fip"]
 
+    def _accounts_for_consent(
+        self,
+        user: CurrentUser,
+        request_body: CreateConsentRequest,
+        selected_fips: list[str],
+    ) -> list[dict[str, Any]]:
+        fi_type = request_body.fi_types[0] if request_body.fi_types else "DEPOSIT"
+        consent_mobile = self._extract_mobile_from_vua(request_body.vua)
+
+        selected_profile = self._store.get_user_selected_accounts(user.uid)
+        selected_accounts: list[dict[str, Any]] = []
+        if selected_profile is not None:
+            selected_mobile = self._normalize_mobile(
+                str(selected_profile.get("mobileNumber") or "")
+            )
+            if selected_mobile and selected_mobile == consent_mobile:
+                for account in selected_profile.get("selectedAccounts", []):
+                    if account.get("fipId") not in selected_fips:
+                        continue
+                    selected_accounts.append(
+                        {
+                            "maskedAccNumber": account.get("maskedAccNumber"),
+                            "accType": account.get("accType", "SAVINGS"),
+                            "fipId": account.get("fipId"),
+                            "fiType": fi_type,
+                            "linkRefNumber": account.get("linkRefNumber"),
+                        }
+                    )
+        if selected_accounts:
+            return selected_accounts
+
+        linked_banks = self._deterministic_linked_banks(
+            user=user,
+            mobile_number=consent_mobile or request_body.vua,
+        )
+        accounts_by_fip: dict[str, list[dict[str, Any]]] = {}
+        for bank in linked_banks:
+            fip_id = bank.get("fipId")
+            if not isinstance(fip_id, str):
+                continue
+            accounts_by_fip[fip_id] = bank.get("accounts", [])
+
+        resolved_accounts: list[dict[str, Any]] = []
+        for fip_id in selected_fips:
+            bank_accounts = accounts_by_fip.get(fip_id, [])
+            if bank_accounts:
+                primary = bank_accounts[0]
+                resolved_accounts.append(
+                    {
+                        "maskedAccNumber": primary.get("maskedAccNumber"),
+                        "accType": primary.get("accType", "SAVINGS"),
+                        "fipId": fip_id,
+                        "fiType": fi_type,
+                        "linkRefNumber": primary.get("linkRefNumber"),
+                    }
+                )
+                continue
+
+            fallback_seed = f"{user.uid}:{consent_mobile}:{fip_id}:consent"
+            resolved_accounts.append(
+                {
+                    "maskedAccNumber": self._mask_account(fallback_seed),
+                    "accType": "SAVINGS",
+                    "fipId": fip_id,
+                    "fiType": fi_type,
+                    "linkRefNumber": self._link_ref_number(fallback_seed),
+                }
+            )
+
+        return resolved_accounts
+
     def create_consent(
         self,
         user: CurrentUser,
@@ -253,17 +486,11 @@ class AAGatewayService:
         consent_start = utc_now()
         consent_expiry = self._compute_expiry(request_body, consent_start)
         selected_fips = self._selected_fips(request_body)
-
-        accounts = [
-            {
-                "maskedAccNumber": self._mask_account(f"{consent_id}:{fip_id}"),
-                "accType": "SAVINGS",
-                "fipId": fip_id,
-                "fiType": request_body.fi_types[0] if request_body.fi_types else "DEPOSIT",
-                "linkRefNumber": str(uuid4()),
-            }
-            for fip_id in selected_fips
-        ]
+        accounts = self._accounts_for_consent(
+            user=user,
+            request_body=request_body,
+            selected_fips=selected_fips,
+        )
 
         tags = request_body.additional_params.tags if request_body.additional_params else []
         notification_url = (

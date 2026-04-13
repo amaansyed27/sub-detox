@@ -11,6 +11,8 @@ from app.dependencies.services import get_gateway_service
 from app.schemas.aa_v2 import (
     AccountAvailabilityRequest,
     AccountAvailabilityResponse,
+    AccountSelectionRequest,
+    AccountSelectionResponse,
     ConsentCollectionRequest,
     ConsentCollectionResponse,
     ConsentDataSessionsResponse,
@@ -37,9 +39,18 @@ GatewayDep = Annotated[AAGatewayService, Depends(get_gateway_service)]
 def account_availability(
     request_body: AccountAvailabilityRequest,
     gateway: GatewayDep,
-    _user: CurrentUserDep,
+    user: CurrentUserDep,
 ) -> AccountAvailabilityResponse:
-    return gateway.account_availability(request_body.mobile_number)
+    return gateway.account_availability(user=user, mobile_number=request_body.mobile_number)
+
+
+@router.post("/account-selection", response_model=AccountSelectionResponse)
+def save_account_selection(
+    request_body: AccountSelectionRequest,
+    gateway: GatewayDep,
+    user: CurrentUserDep,
+) -> AccountSelectionResponse:
+    return gateway.save_account_selection(user=user, request_body=request_body)
 
 
 @router.get("/fips", response_model=FipListResponse)

@@ -17,6 +17,32 @@ def test_v2_fips_and_account_availability(client):
         json={"mobileNumber": "9999999999"},
     )
     assert availability.status_code == 200
-    accounts = availability.json()["accounts"]
+    availability_payload = availability.json()
+    accounts = availability_payload["accounts"]
     assert len(accounts) >= 2
     assert all("vua" in account for account in accounts)
+
+    linked_banks = availability_payload["linkedBanks"]
+    assert linked_banks
+    assert linked_banks[0]["accounts"]
+
+    first_link_ref = linked_banks[0]["accounts"][0]["linkRefNumber"]
+
+    availability_repeat = client.post(
+        "/v2/account-availability",
+        json={"mobileNumber": "9999999999"},
+    )
+    assert availability_repeat.status_code == 200
+    assert availability_repeat.json()["linkedBanks"] == linked_banks
+
+    selection = client.post(
+        "/v2/account-selection",
+        json={
+            "mobileNumber": "9999999999",
+            "selectedLinkRefNumbers": [first_link_ref],
+        },
+    )
+    assert selection.status_code == 200
+    selected_accounts = selection.json()["selectedAccounts"]
+    assert len(selected_accounts) == 1
+    assert selected_accounts[0]["linkRefNumber"] == first_link_ref
