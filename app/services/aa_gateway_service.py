@@ -817,7 +817,18 @@ class AAGatewayService:
         )
 
     def _mock_fi_data(self, account_state: dict[str, Any]) -> dict[str, Any]:
-        mock_payload: AAMockDataResponse = self._mock_aa_service.generate_mock_payload()
+        seed_key = (
+            f"{account_state.get('fipId', 'setu-fip')}:"
+            f"{account_state.get('linkRefNumber', 'default')}"
+        )
+        mock_payload: AAMockDataResponse = self._mock_aa_service.generate_mock_payload(
+            seed_key=seed_key,
+            selected_account={
+                "fipId": account_state.get("fipId", "setu-fip"),
+                "linkRefNumber": account_state.get("linkRefNumber", ""),
+                "maskedAccNumber": account_state.get("maskedAccNumber", ""),
+            },
+        )
         fi_record = mock_payload.fi[0].model_dump(by_alias=True)
         fi_record["linkRefNumber"] = account_state.get("linkRefNumber")
         fi_record["maskedAccNumber"] = account_state.get("maskedAccNumber")
@@ -1018,7 +1029,27 @@ class AAGatewayService:
         }
 
     def get_mock_aa_data(self, user: CurrentUser) -> dict[str, Any]:
-        payload = self._mock_aa_service.generate_mock_payload()
+        selected_profile = self._store.get_user_selected_accounts(user.uid)
+        selected_accounts = (
+            selected_profile.get("selectedAccounts", [])
+            if isinstance(selected_profile, dict)
+            else []
+        )
+        selected_account = selected_accounts[0] if selected_accounts else None
+        mobile_number = (
+            selected_profile.get("mobileNumber")
+            if isinstance(selected_profile, dict)
+            else user.phone_number
+        )
+        seed_key = f"{user.uid}:{mobile_number or 'no-mobile'}"
+        if selected_account:
+            seed_key = f"{seed_key}:{selected_account.get('linkRefNumber', 'no-link-ref')}"
+
+        payload = self._mock_aa_service.generate_mock_payload(
+            seed_key=seed_key,
+            selected_account=selected_account,
+            mobile_number=mobile_number,
+        )
         self._store.create_audit_event(
             {
                 "userId": user.uid,
@@ -1029,7 +1060,34 @@ class AAGatewayService:
         return payload.model_dump(by_alias=True)
 
     def analyze_transactions(self, user: CurrentUser, aa_payload: AAMockDataResponse | None) -> dict[str, Any]:
-        payload = aa_payload or self._mock_aa_service.generate_mock_payload()
+        payload = aa_payload
+        if payload is None:
+            selected_profile = self._store.get_user_selected_accounts(user.uid)
+            selected_accounts = (
+                selected_profile.get("selectedAccounts", [])
+                if isinstance(selected_profile, dict)
+                else []
+            )
+            selected_account = selected_accounts[0] if selected_accounts else None
+            mobile_number = (
+                selected_profile.get("mobileNumber")
+                if isinstance(selected_profile, dict)
+                else user.phone_number
+            )
+
+            seed_key = f"{user.uid}:{mobile_number or 'no-mobile'}"
+            if selected_account:
+                seed_key = (
+                    f"{seed_key}:{selected_account.get('fipId', 'setu-fip')}:"
+                    f"{selected_account.get('linkRefNumber', 'no-link-ref')}"
+                )
+
+            payload = self._mock_aa_service.generate_mock_payload(
+                seed_key=seed_key,
+                selected_account=selected_account,
+                mobile_number=mobile_number,
+            )
+
         analysis = self._analysis_service.analyze(payload)
         generated_at = utc_now()
 

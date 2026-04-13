@@ -16,6 +16,20 @@ def test_app_compat_analyze_latest_revoke_flow(client):
     assert analyzed_json["scanned_transaction_count"] > 0
     assert analyzed_json["detected_subscriptions"], "Expected detected subscriptions"
 
+    analyzed_repeat = client.post("/api/analyze-transactions", json={})
+    assert analyzed_repeat.status_code == 200
+    analyzed_repeat_json = analyzed_repeat.json()
+
+    first_run_codes = [item["merchant_code"] for item in analyzed_json["detected_subscriptions"]]
+    second_run_codes = [
+        item["merchant_code"] for item in analyzed_repeat_json["detected_subscriptions"]
+    ]
+    assert second_run_codes == first_run_codes
+    assert (
+        analyzed_repeat_json["total_monthly_leakage"]
+        == analyzed_json["total_monthly_leakage"]
+    )
+
     first_merchant = analyzed_json["detected_subscriptions"][0]["merchant_code"]
 
     latest = client.get("/api/analysis/latest")

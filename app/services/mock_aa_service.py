@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from uuid import uuid4
+import hashlib
 
 from app.schemas.aa import (
     AAMockDataResponse,
@@ -17,14 +17,29 @@ from app.schemas.aa import (
 class MockAAService:
     """Generates realistic, nested Account Aggregator style mock transaction data."""
 
-    def generate_mock_payload(self) -> AAMockDataResponse:
-        transactions = self._build_transactions()
+    def generate_mock_payload(
+        self,
+        seed_key: str = "default",
+        selected_account: dict[str, str] | None = None,
+        mobile_number: str | None = None,
+    ) -> AAMockDataResponse:
+        normalized_seed = seed_key.strip() or "default"
+        seed_digest = hashlib.sha256(normalized_seed.encode("utf-8")).hexdigest().upper()
+        transactions = self._build_transactions(normalized_seed)
+
+        account_context = selected_account or {}
+        link_ref_number = account_context.get("linkRefNumber") or f"LNK-{seed_digest[28:38]}"
+        masked_acc_number = account_context.get("maskedAccNumber") or (
+            f"XXXXXX{int(seed_digest[38:42], 16) % 10000:04d}"
+        )
+        fip_id = account_context.get("fipId") or "FIP-ICIC-IND-001"
+        holder_mobile = mobile_number or "+919812345678"
 
         return AAMockDataResponse(
             timestamp=datetime.now(timezone.utc),
-            txnid=f"TXN-{uuid4().hex[:16].upper()}",
+            txnid=f"TXN-{seed_digest[:16]}",
             consent=Consent(
-                id=f"CONSENT-{uuid4().hex[:12].upper()}",
+                id=f"CONSENT-{seed_digest[16:28]}",
                 status="ACTIVE",
                 fi_data_range=FIDataRange(
                     from_date=date.today() - timedelta(days=90),
@@ -34,14 +49,14 @@ class MockAAService:
             fi=[
                 FinancialInformation(
                     fi_type="DEPOSIT",
-                    fip_id="FIP-ICIC-IND-001",
-                    link_ref_number=f"LNK-{uuid4().hex[:10].upper()}",
-                    masked_acc_number="XXXXXX4521",
+                    fip_id=fip_id,
+                    link_ref_number=link_ref_number,
+                    masked_acc_number=masked_acc_number,
                     profile=Profile(
                         holders=[
                             Holder(
                                 name="Amaan Sharma",
-                                mobile="+919812345678",
+                                mobile=holder_mobile,
                                 email="amaan.sharma@example.com",
                             )
                         ],
@@ -52,7 +67,7 @@ class MockAAService:
             ],
         )
 
-    def _build_transactions(self) -> list[Transaction]:
+    def _build_transactions(self, seed_key: str) -> list[Transaction]:
         today = date.today()
         serial = 1
         transactions: list[Transaction] = []
@@ -60,7 +75,7 @@ class MockAAService:
         def add_transaction(
             days_ago: int,
             narration: str,
-            amount: str,
+            amount: Decimal,
             txn_type: str,
             mode: str,
             category: str,
@@ -71,7 +86,7 @@ class MockAAService:
                     txn_id=f"AA-TXN-{today.strftime('%Y%m')}-{serial:04d}",
                     value_date=today - timedelta(days=days_ago),
                     narration=narration,
-                    amount=Decimal(amount),
+                    amount=self._money(amount),
                     txn_type=txn_type,
                     mode=mode,
                     category=category,
@@ -79,66 +94,79 @@ class MockAAService:
             )
             serial += 1
 
-        # Hidden recurring leaks we want the analysis engine to catch.
+        gym_amount = self._with_variance(Decimal("1499.00"), f"{seed_key}:gym", Decimal("40.00"))
         for days_ago in (8, 38, 68):
             add_transaction(
                 days_ago,
-                "GYMCULT-AUTOPAY 1499.00",
-                "1499.00",
+                f"GYMCULT-AUTOPAY {gym_amount}",
+                gym_amount,
                 "DEBIT",
                 "UPI_AUTOPAY",
                 "SUBSCRIPTION",
             )
 
+        vas_amount = self._with_variance(Decimal("49.00"), f"{seed_key}:vas", Decimal("5.00"))
         for days_ago in (6, 36, 66):
             add_transaction(
                 days_ago,
-                "VIL-VAS-HELLOTUNE 49.00",
-                "49.00",
+                f"VIL-VAS-HELLOTUNE {vas_amount}",
+                vas_amount,
                 "DEBIT",
                 "AUTO_DEBIT",
                 "TELECOM_VAS",
             )
 
+        shield_amount = self._with_variance(
+            Decimal("199.00"),
+            f"{seed_key}:shield",
+            Decimal("12.00"),
+        )
         for days_ago in (4, 34, 64):
             add_transaction(
                 days_ago,
-                "CREDIT-SHIELD 199.00",
-                "199.00",
+                f"CREDIT-SHIELD {shield_amount}",
+                shield_amount,
                 "DEBIT",
                 "AUTO_DEBIT",
                 "INSURANCE_ADDON",
             )
 
-        # A known, non-obscure subscription to benchmark low-risk detection.
+        netflix_amount = self._with_variance(
+            Decimal("649.00"),
+            f"{seed_key}:netflix",
+            Decimal("20.00"),
+        )
         for days_ago in (10, 40, 70):
             add_transaction(
                 days_ago,
-                "NETFLIX-SUBSCRIPTION 649.00",
-                "649.00",
+                f"NETFLIX-SUBSCRIPTION {netflix_amount}",
+                netflix_amount,
                 "DEBIT",
                 "CARD_ECOM",
                 "SUBSCRIPTION",
             )
 
-        for days_ago, amount in ((12, "95000.00"), (42, "95000.00"), (72, "95000.00")):
+        salary_amount = self._with_variance(
+            Decimal("95000.00"),
+            f"{seed_key}:salary",
+            Decimal("2200.00"),
+        )
+        for days_ago in (12, 42, 72):
             add_transaction(
                 days_ago,
                 "ACME CORP SALARY CREDIT",
-                amount,
+                salary_amount,
                 "CREDIT",
                 "NEFT",
                 "SALARY",
             )
 
-        for days_ago, amount in (
-            (1, "342.00"),
-            (14, "287.00"),
-            (27, "418.00"),
-            (46, "361.00"),
-            (61, "299.00"),
-            (79, "322.00"),
-        ):
+        for index, days_ago in enumerate((1, 14, 27, 46, 61, 79), start=1):
+            amount = self._with_variance(
+                Decimal("330.00"),
+                f"{seed_key}:zomato:{index}",
+                Decimal("95.00"),
+            )
             add_transaction(
                 days_ago,
                 "ZOMATO ORDER",
@@ -148,13 +176,12 @@ class MockAAService:
                 "FOOD",
             )
 
-        for days_ago, amount in (
-            (3, "221.00"),
-            (18, "312.00"),
-            (33, "188.00"),
-            (52, "274.00"),
-            (74, "197.00"),
-        ):
+        for index, days_ago in enumerate((3, 18, 33, 52, 74), start=1):
+            amount = self._with_variance(
+                Decimal("245.00"),
+                f"{seed_key}:uber:{index}",
+                Decimal("70.00"),
+            )
             add_transaction(
                 days_ago,
                 "UBER TRIP",
@@ -164,7 +191,12 @@ class MockAAService:
                 "TRANSPORT",
             )
 
-        for days_ago, amount in ((5, "2289.00"), (24, "3411.00"), (49, "2750.00"), (83, "3012.00")):
+        for index, days_ago in enumerate((5, 24, 49, 83), start=1):
+            amount = self._with_variance(
+                Decimal("2860.00"),
+                f"{seed_key}:groceries:{index}",
+                Decimal("650.00"),
+            )
             add_transaction(
                 days_ago,
                 "BIGBAZAAR GROCERIES",
@@ -174,7 +206,12 @@ class MockAAService:
                 "GROCERIES",
             )
 
-        for days_ago, amount in ((21, "1320.00"), (54, "1459.00"), (86, "1389.00")):
+        for index, days_ago in enumerate((21, 54, 86), start=1):
+            amount = self._with_variance(
+                Decimal("1385.00"),
+                f"{seed_key}:utilities:{index}",
+                Decimal("120.00"),
+            )
             add_transaction(
                 days_ago,
                 "BESCOM ELECTRICITY BILL",
@@ -186,6 +223,18 @@ class MockAAService:
 
         transactions.sort(key=lambda item: item.value_date, reverse=True)
         return transactions
+
+    @staticmethod
+    def _hash_ratio(value: str) -> Decimal:
+        digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+        numerator = Decimal(int(digest[:12], 16))
+        denominator = Decimal(int("FFFFFFFFFFFF", 16))
+        return numerator / denominator
+
+    def _with_variance(self, base: Decimal, seed: str, max_delta: Decimal) -> Decimal:
+        ratio = self._hash_ratio(seed)
+        delta = (ratio - Decimal("0.5")) * Decimal("2") * max_delta
+        return self._money(base + delta)
 
     def _build_summary(self, transactions: list[Transaction]) -> AccountSummary:
         debit_total = sum(
