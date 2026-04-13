@@ -80,7 +80,9 @@ sequenceDiagram
 The backend exposes two complementary API surfaces:
 
 - AA-style v2 simulator APIs for consent/session/FIP/account-availability lifecycles.
-- App-compat APIs used by the Flutter dashboard (`/api/me`, `/api/analyze-transactions`, `/api/analysis/latest`, `/api/revoke-mandate`).
+- App-compat APIs used by the Flutter app flow:
+  - onboarding and account selection: `/api/me`, `/api/v2/account-availability`, `/api/v2/account-selection`
+  - dashboard analysis and actions: `/api/analyze-transactions`, `/api/analysis/latest`, `/api/revoke-mandate`
 
 ## Repository Layout
 
