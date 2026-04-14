@@ -7,6 +7,8 @@ class AnalyzeTransactionsResponse {
     required this.detectedSubscriptions,
     required this.totalMonthlyLeakage,
     required this.currency,
+    required this.analysisSource,
+    this.geminiError,
   });
 
   final DateTime generatedAt;
@@ -14,12 +16,15 @@ class AnalyzeTransactionsResponse {
   final List<DetectedSubscription> detectedSubscriptions;
   final double totalMonthlyLeakage;
   final String currency;
+  final String analysisSource;
+  final String? geminiError;
 
   factory AnalyzeTransactionsResponse.fromJson(Map<String, dynamic> json) {
-    final subscriptions = (json['detected_subscriptions'] as List<dynamic>? ?? [])
-        .whereType<Map<String, dynamic>>()
-        .map(DetectedSubscription.fromJson)
-        .toList();
+    final subscriptions =
+        (json['detected_subscriptions'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(DetectedSubscription.fromJson)
+            .toList();
 
     return AnalyzeTransactionsResponse(
       generatedAt: DateTime.parse((json['generated_at'] ?? '') as String),
@@ -27,6 +32,8 @@ class AnalyzeTransactionsResponse {
       detectedSubscriptions: subscriptions,
       totalMonthlyLeakage: _parseNum(json['total_monthly_leakage']),
       currency: (json['currency'] ?? 'INR') as String,
+      analysisSource: (json['analysis_source'] ?? 'RULES_ENGINE') as String,
+      geminiError: json['gemini_error'] as String?,
     );
   }
 

@@ -112,14 +112,10 @@ class AccountLinkingProvider extends ChangeNotifier {
       }
 
       final profile = await _apiService.fetchUserSelectionProfile(idToken);
-      if (profile.hasSelectedAccountsForMobile(resolvedMobile)) {
-        _needsOnboarding = false;
-        _linkedBanks = const [];
-        _selectedLinkRefNumbers = profile.selectedLinkRefNumbers.toSet();
-        _state = AccountLinkingState.completed;
-        notifyListeners();
-        return;
-      }
+      final existingSelection =
+          profile.hasSelectedAccountsForMobile(resolvedMobile)
+              ? profile.selectedLinkRefNumbers.toSet()
+              : <String>{};
 
       final availability = await _apiService.fetchAccountAvailability(
         idToken: idToken,
@@ -127,7 +123,16 @@ class AccountLinkingProvider extends ChangeNotifier {
       );
 
       _linkedBanks = availability.linkedBanks;
-      _selectedLinkRefNumbers = _defaultSelection(_linkedBanks);
+      final availableLinkRefs = _linkedBanks
+          .expand((bank) => bank.accounts)
+          .map((account) => account.linkRefNumber)
+          .where((ref) => ref.isNotEmpty)
+          .toSet();
+      final preselected = existingSelection.intersection(availableLinkRefs);
+
+      _selectedLinkRefNumbers = preselected.isNotEmpty
+          ? preselected
+          : _defaultSelection(_linkedBanks);
       _needsOnboarding = _linkedBanks.isNotEmpty;
       _state = _needsOnboarding
           ? AccountLinkingState.ready

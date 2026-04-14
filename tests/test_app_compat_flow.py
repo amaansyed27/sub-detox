@@ -15,6 +15,11 @@ def test_app_compat_analyze_latest_revoke_flow(client):
     analyzed_json = analyzed.json()
     assert analyzed_json["scanned_transaction_count"] > 0
     assert analyzed_json["detected_subscriptions"], "Expected detected subscriptions"
+    assert analyzed_json["analysis_source"] in {
+        "RULES_ENGINE",
+        "RULES_PLUS_GEMINI",
+        "RULES_FALLBACK",
+    }
 
     analyzed_repeat = client.post("/api/analyze-transactions", json={})
     assert analyzed_repeat.status_code == 200
@@ -36,6 +41,11 @@ def test_app_compat_analyze_latest_revoke_flow(client):
     assert latest.status_code == 200
     latest_json = latest.json()
     assert latest_json["detected_subscriptions"]
+    assert latest_json["analysis_source"] in {
+        "RULES_ENGINE",
+        "RULES_PLUS_GEMINI",
+        "RULES_FALLBACK",
+    }
 
     revoke = client.post("/api/revoke-mandate", json={"merchant_code": first_merchant})
     assert revoke.status_code == 200

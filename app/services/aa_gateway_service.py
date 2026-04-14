@@ -1205,6 +1205,8 @@ class AAGatewayService:
                 )
             ),
             "currency": analysis.currency,
+            "analysis_source": analysis_source,
+            "gemini_error": gemini_error,
         }
 
     def get_latest_analysis(self, user: CurrentUser) -> dict[str, Any] | None:
@@ -1241,6 +1243,8 @@ class AAGatewayService:
             "detected_subscriptions": detected,
             "total_monthly_leakage": float(active_total),
             "currency": latest.get("currency", "INR"),
+            "analysis_source": latest.get("analysisSource", "RULES_ENGINE"),
+            "gemini_error": latest.get("geminiError"),
         }
 
     def revoke_mandate(self, user: CurrentUser, merchant_code: str) -> dict[str, Any]:

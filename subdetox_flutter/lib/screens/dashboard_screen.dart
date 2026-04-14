@@ -51,7 +51,8 @@ class DashboardScreen extends StatelessWidget {
                                   'Unable to complete analysis.',
                               onRetry: provider.analyze,
                             ),
-                          DashboardState.results => _ResultsView(provider: provider),
+                          DashboardState.results =>
+                            _ResultsView(provider: provider),
                         },
                       ),
                     ),
@@ -99,7 +100,10 @@ class _TopBar extends StatelessWidget {
             children: [
               Text(
                 'SubDetox',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontSize: 24),
               ),
               Text(
                 'Silent wealth leakage auditor',
@@ -156,7 +160,8 @@ class _InitialView extends StatelessWidget {
                 color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(LucideIcons.scanFace, color: Color(0xFF1D4ED8), size: 28),
+              child: const Icon(LucideIcons.scanFace,
+                  color: Color(0xFF1D4ED8), size: 28),
             ),
             const SizedBox(height: 16),
             Text(
@@ -255,7 +260,8 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(LucideIcons.alertTriangle, color: Color(0xFFDC2626), size: 28),
+            const Icon(LucideIcons.alertTriangle,
+                color: Color(0xFFDC2626), size: 28),
             const SizedBox(height: 10),
             Text(
               'Analysis failed',
@@ -298,6 +304,11 @@ class _ResultsView extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 24),
         children: [
+          _AnalysisSourceBanner(
+            analysisSource: analysis.analysisSource,
+            geminiError: analysis.geminiError,
+          ),
+          const SizedBox(height: 12),
           ActionHeroCard(
             key: ValueKey('hero-${analysis.generatedAt.toIso8601String()}'),
             monthlyLeakage: provider.activeMonthlyLeakage,
@@ -315,7 +326,8 @@ class _ResultsView extends StatelessWidget {
           const SizedBox(height: 22),
           const SectionHeader(
             title: 'Immediate Action Required',
-            subtitle: 'High-risk recurring debits likely draining money silently.',
+            subtitle:
+                'High-risk recurring debits likely draining money silently.',
             icon: LucideIcons.siren,
           ),
           const SizedBox(height: 12),
@@ -339,7 +351,8 @@ class _ResultsView extends StatelessWidget {
           const SizedBox(height: 18),
           const SectionHeader(
             title: 'Known Subscriptions',
-            subtitle: 'Mainstream low-risk subscriptions detected by the engine.',
+            subtitle:
+                'Mainstream low-risk subscriptions detected by the engine.',
             icon: LucideIcons.checkCircle2,
           ),
           const SizedBox(height: 12),
@@ -422,6 +435,84 @@ class _ResultsView extends StatelessWidget {
         displayName: subscription.displayName,
         monthlyAmount: subscription.estimatedMonthlyAmount,
         onRevoke: () => provider.revokeMandate(subscription),
+      ),
+    );
+  }
+}
+
+class _AnalysisSourceBanner extends StatelessWidget {
+  const _AnalysisSourceBanner({
+    required this.analysisSource,
+    required this.geminiError,
+  });
+
+  final String analysisSource;
+  final String? geminiError;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = analysisSource.toUpperCase();
+    final isGemini = normalized == 'RULES_PLUS_GEMINI';
+    final isFallback = normalized == 'RULES_FALLBACK';
+
+    final toneColor = isGemini
+        ? const Color(0xFF166534)
+        : isFallback
+            ? const Color(0xFF92400E)
+            : const Color(0xFF1E3A8A);
+    final bgColor = isGemini
+        ? const Color(0xFFDCFCE7)
+        : isFallback
+            ? const Color(0xFFFEF3C7)
+            : const Color(0xFFE0E7FF);
+
+    final label = switch (normalized) {
+      'RULES_PLUS_GEMINI' => 'Rules + Gemini 2.5 Flash',
+      'RULES_FALLBACK' => 'Rules engine (Gemini fallback)',
+      _ => 'Rules engine only',
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: toneColor.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isGemini ? LucideIcons.sparkles : LucideIcons.brain,
+                size: 16,
+                color: toneColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Analysis engine: $label',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: toneColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          if (isFallback && (geminiError ?? '').isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Gemini fallback reason: ${geminiError!}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF78350F),
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ],
       ),
     );
   }

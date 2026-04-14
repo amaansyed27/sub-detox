@@ -41,6 +41,8 @@ def test_gemini_failure_falls_back_to_rules_engine() -> None:
 
     result = gateway.analyze_transactions(user=_user(), aa_payload=None)
     assert result["detected_subscriptions"], "Rules engine output should still be returned."
+    assert result["analysis_source"] == "RULES_FALLBACK"
+    assert result["gemini_error"]
 
     run = store.get_latest_analysis_run("gemini-test-user")
     assert run is not None
@@ -59,6 +61,8 @@ def test_gemini_success_marks_enriched_source() -> None:
 
     result = gateway.analyze_transactions(user=_user(), aa_payload=None)
     assert result["detected_subscriptions"][0]["reasoning"].startswith("Gemini enrichment")
+    assert result["analysis_source"] == "RULES_PLUS_GEMINI"
+    assert result["gemini_error"] is None
 
     run = store.get_latest_analysis_run("gemini-test-user")
     assert run is not None
