@@ -29,5 +29,16 @@ The separation of concerns between the deterministic "Rules Engine" and the non-
 3.  **Error Handling Granularity:** While the Gemini fallback is great, ensuring the UI clearly communicates *why* an action failed (e.g., if Firestore is unreachable) would improve UX.
 4.  **Security Posture:** While Firebase handles Auth, ensure that the API layer strictly validates the Firebase ID token and enforces authorization checks on all protected endpoints, especially given the financial nature of the mock data.
 
+## Scoring Breakdown
+
+| Category | Score | Justification |
+| :--- | :---: | :--- |
+| **Innovation & Impact** | 8.5/10 | Identifying recurring financial leakage is a high-value consumer problem. Using an AA-style simulator alongside LLMs for reasoning rather than raw data extraction is a clever and pragmatic approach. |
+| **Technical Complexity & Architecture** | 9.0/10 | The hybrid architecture (Flutter, FastAPI, Firebase, Cloud Run) is impressive for a hackathon. The fallback mechanism (Rules -> Gemini -> Rules Fallback) shows strong engineering foresight. |
+| **Execution & Completeness** | 9.0/10 | The core user journey (onboarding -> link account -> analysis -> revoke) works end-to-end. Documentation and setup scripts are exceptionally complete. |
+| **UX & Polish** | 8.0/10 | The Flutter app provides a multi-tab structure. UI components like "Risk priority cards" and "Action chips" make the complex backend analysis easy to consume. |
+
 ## Final Verdict
 SubDetox is a highly impressive hackathon submission. It identifies a real problem, proposes a technically sound and resilient architecture to solve it, and delivers a polished, well-documented prototype. The robust engineering practices, particularly the documentation and fallback mechanisms, set it apart. Excellent work.
+
+### Overall Score: **8.6 / 10**
