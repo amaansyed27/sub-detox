@@ -61,7 +61,7 @@ class _AppShellScreenState extends State<AppShellScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  'Select at least one linked bank account before using other tabs.',
+                  'Select an account first.',
                 ),
               ),
             );

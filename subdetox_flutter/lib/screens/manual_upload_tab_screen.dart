@@ -116,7 +116,7 @@ class _ManualUploadTabScreenState extends State<ManualUploadTabScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Paste statement rows, SMS exports, or transaction snippets for quick recurring-debit detection.',
+              'Paste statement lines to scan recurring debits.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
@@ -134,8 +134,7 @@ class _ManualUploadTabScreenState extends State<ManualUploadTabScreen> {
               maxLines: 16,
               decoration: const InputDecoration(
                 labelText: 'Statement content',
-                hintText:
-                    '2026-04-01 NETFLIX.COM 649\n2026-04-02 UPI GROCERY 420\n...',
+                hintText: '2026-04-01 NETFLIX 649\n2026-04-02 UPI 420\n...',
                 alignLabelWithHint: true,
               ),
             ),
@@ -165,7 +164,7 @@ class _ManualUploadTabScreenState extends State<ManualUploadTabScreen> {
                       )
                     : const Icon(Icons.cloud_upload_outlined),
                 label: Text(
-                  _isSubmitting ? 'Uploading...' : 'Submit Manual Upload',
+                  _isSubmitting ? 'Uploading...' : 'Submit Upload',
                 ),
               ),
             ),
@@ -213,23 +212,11 @@ class _UploadResultCard extends StatelessWidget {
           Text('Records parsed: ${upload.recordsParsed}'),
           Text('Estimated recurring hints: ${upload.estimatedSubscriptions}'),
           const SizedBox(height: 10),
-          ...upload.nextSteps.map(
-            (step) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('• '),
-                  Expanded(child: Text(step)),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: onCreateTicket,
             icon: const Icon(Icons.confirmation_number_outlined),
-            label: const Text('Create Support Ticket from Upload'),
+            label: const Text('Create Support Ticket'),
           ),
         ],
       ),

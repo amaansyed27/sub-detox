@@ -51,11 +51,12 @@ class AccountsTabScreen extends StatelessWidget {
                     textColor: const Color(0xFF991B1B),
                   ),
                 ),
-              if (provider.state == AccountLinkingState.completed)
+              if (provider.state == AccountLinkingState.completed &&
+                  provider.selectedCount > 0)
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: _MessageCard(
-                    text: 'Account selection saved. You can update it anytime.',
+                    text: 'Selection saved.',
                     color: Color(0xFFDCFCE7),
                     textColor: Color(0xFF166534),
                   ),
@@ -64,20 +65,38 @@ class AccountsTabScreen extends StatelessWidget {
               Expanded(
                 child: provider.isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: provider.linkedBanks.length,
-                        itemBuilder: (context, index) {
-                          final bank = provider.linkedBanks[index];
-                          return _BankCard(
-                            bank: bank,
-                            isSelected: provider.isSelected,
-                            isSaving:
-                                provider.state == AccountLinkingState.saving,
-                            onToggle: provider.toggleSelection,
-                          );
-                        },
-                      ),
+                    : provider.linkedBanks.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border:
+                                    Border.all(color: const Color(0xFFD6E0EC)),
+                              ),
+                              child: Text(
+                                'No linked accounts found. Tap refresh to retry.',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            itemCount: provider.linkedBanks.length,
+                            itemBuilder: (context, index) {
+                              final bank = provider.linkedBanks[index];
+                              return _BankCard(
+                                bank: bank,
+                                isSelected: provider.isSelected,
+                                isSaving:
+                                    provider.state == AccountLinkingState.saving,
+                                onToggle: provider.toggleSelection,
+                              );
+                            },
+                          ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -98,8 +117,10 @@ class AccountsTabScreen extends StatelessWidget {
                         : const Icon(Icons.check_circle_outline),
                     label: Text(
                       provider.state == AccountLinkingState.saving
-                          ? 'Saving account selection...'
-                          : 'Save ${provider.selectedCount} selected account${provider.selectedCount == 1 ? '' : 's'}',
+                          ? 'Saving...'
+                          : provider.linkedBanks.isEmpty
+                              ? 'No accounts available'
+                              : 'Save ${provider.selectedCount} account${provider.selectedCount == 1 ? '' : 's'}',
                     ),
                   ),
                 ),

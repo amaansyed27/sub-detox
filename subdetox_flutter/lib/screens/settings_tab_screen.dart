@@ -47,8 +47,7 @@ class SettingsTabScreen extends StatelessWidget {
                   const Text('Backend mode: ${ApiConfig.backendMode}'),
                   const Text('Project ID: ${ApiConfig.projectId}'),
                   const SizedBox(height: 4),
-                  const Text(
-                      'Gemini chat grounding: enabled from backend settings'),
+                  const Text('Gemini grounding: backend controlled'),
                 ],
               ),
             ),
@@ -64,8 +63,8 @@ class SettingsTabScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     accountProvider.needsOnboarding
-                        ? 'Selection pending. Complete account selection in Accounts tab.'
-                        : 'Selection complete. You can update linked accounts anytime.',
+                        ? 'Selection pending. Complete it in Accounts.'
+                        : 'Selection complete.',
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
@@ -73,7 +72,7 @@ class SettingsTabScreen extends StatelessWidget {
                         ? null
                         : accountProvider.retry,
                     icon: const Icon(Icons.sync),
-                    label: const Text('Refresh Linked Accounts'),
+                    label: const Text('Refresh Accounts'),
                   ),
                 ],
               ),

@@ -24,8 +24,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
     _messages.add(
       const _ChatBubbleModel(
         role: 'assistant',
-        text:
-            'Hi, I am your SubDetox banking assistant. Ask about mandates, recurring debits, disputes, RBI rules, or how-to steps.',
+        text: 'Ask about mandates, disputes, or recurring debits.',
         grounded: false,
       ),
     );
@@ -84,11 +83,14 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
         );
       });
     } on AnalysisApiException catch (error) {
+      final displayMessage = error.statusCode == 404
+          ? 'Chat service is unavailable right now.'
+          : 'Could not get a reply. Please try again.';
       setState(() {
         _messages.add(
           _ChatBubbleModel(
             role: 'assistant',
-            text: error.message,
+            text: displayMessage,
             grounded: false,
           ),
         );
@@ -178,7 +180,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                     style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 6),
                 Text(
-                  'Grounded web search is enabled when available for latest banking updates and practical how-to support.',
+                  'Grounded search is used when available.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 8),
@@ -187,17 +189,17 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                   runSpacing: 8,
                   children: [
                     _QuickPromptChip(
-                      label: 'Latest RBI autopay rules',
+                      label: 'RBI e-mandate rules',
                       onTap: () => _send(
                           'What are the latest RBI autopay and e-mandate rules in India?'),
                     ),
                     _QuickPromptChip(
-                      label: 'How to dispute wrong debit',
+                      label: 'Dispute wrong debit',
                       onTap: () => _send(
                           'How do I dispute an unauthorized recurring debit with my bank?'),
                     ),
                     _QuickPromptChip(
-                      label: 'Subscription cleanup plan',
+                      label: 'Cleanup plan',
                       onTap: () => _send(
                           'Give me a step-by-step subscription cleanup plan using my linked accounts.'),
                     ),
@@ -299,8 +301,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                     minLines: 1,
                     maxLines: 4,
                     decoration: const InputDecoration(
-                      hintText:
-                          'Ask Gemini about banking tips, disputes, mandates...',
+                      hintText: 'Ask Gemini...',
                     ),
                   ),
                 ),
