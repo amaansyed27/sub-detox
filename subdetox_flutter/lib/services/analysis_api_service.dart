@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/analyze_transactions_response.dart';
+import '../models/chat_assist_models.dart';
 import '../models/linked_bank_models.dart';
+import '../models/manual_upload_models.dart';
 import 'api_config.dart';
 
 class AnalysisApiService {
@@ -136,6 +138,126 @@ class AnalysisApiService {
 
     throw AnalysisApiException(
       'Failed to revoke mandate. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<ManualUploadResponse> submitManualUpload({
+    required String idToken,
+    required String fileName,
+    required String content,
+    required String uploadMethod,
+  }) async {
+    final response = await http.post(
+      ApiConfig.manualUploadUri,
+      headers: ApiConfig.authHeaders(idToken),
+      body: jsonEncode(
+        {
+          'fileName': fileName,
+          'content': content,
+          'uploadMethod': uploadMethod,
+        },
+      ),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return ManualUploadResponse.fromJson(decoded);
+    }
+
+    throw AnalysisApiException(
+      'Failed to submit manual upload. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<ChatAssistResponse> askGeminiAssistant({
+    required String idToken,
+    required String message,
+    required List<Map<String, String>> history,
+  }) async {
+    final response = await http.post(
+      ApiConfig.chatAssistUri,
+      headers: ApiConfig.authHeaders(idToken),
+      body: jsonEncode(
+        {
+          'message': message,
+          'history': history,
+        },
+      ),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return ChatAssistResponse.fromJson(decoded);
+    }
+
+    throw AnalysisApiException(
+      'Failed to get assistant reply. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<SupportTicketResponse> createSupportTicket({
+    required String idToken,
+    required String title,
+    required String description,
+    String category = 'BANKING_HELP',
+    String priority = 'MEDIUM',
+  }) async {
+    final response = await http.post(
+      ApiConfig.chatTicketsUri,
+      headers: ApiConfig.authHeaders(idToken),
+      body: jsonEncode(
+        {
+          'title': title,
+          'description': description,
+          'category': category,
+          'priority': priority,
+        },
+      ),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return SupportTicketResponse.fromJson(decoded);
+    }
+
+    throw AnalysisApiException(
+      'Failed to create support ticket. '
+      'Status ${response.statusCode}: ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<ServiceRequestResponse> createServiceRequest({
+    required String idToken,
+    required String requestType,
+    required String details,
+    String? accountLinkRefNumber,
+  }) async {
+    final response = await http.post(
+      ApiConfig.chatRequestsUri,
+      headers: ApiConfig.authHeaders(idToken),
+      body: jsonEncode(
+        {
+          'requestType': requestType,
+          'details': details,
+          'accountLinkRefNumber': accountLinkRefNumber,
+        },
+      ),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return ServiceRequestResponse.fromJson(decoded);
+    }
+
+    throw AnalysisApiException(
+      'Failed to create service request. '
       'Status ${response.statusCode}: ${response.body}',
       statusCode: response.statusCode,
     );

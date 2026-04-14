@@ -12,58 +12,67 @@ import '../widgets/section_header.dart';
 import '../widgets/subscription_card.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({
+    super.key,
+    this.embedInParentScaffold = false,
+  });
+
+  final bool embedInParentScaffold;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF8FBFF), Color(0xFFF1F5F9)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+    final content = Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF8FBFF), Color(0xFFF1F5F9)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        child: SafeArea(
-          child: Consumer2<AuthProvider, AnalysisProvider>(
-            builder: (context, authProvider, provider, _) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _TopBar(
-                      state: provider.state,
-                      onRescan: provider.analyze,
-                      onLogout: authProvider.signOut,
+      ),
+      child: SafeArea(
+        child: Consumer2<AuthProvider, AnalysisProvider>(
+          builder: (context, authProvider, provider, _) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  _TopBar(
+                    state: provider.state,
+                    onRescan: provider.analyze,
+                    onLogout: authProvider.signOut,
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 320),
+                      child: switch (provider.state) {
+                        DashboardState.initial => _InitialView(
+                            onStartAnalysis: provider.analyze,
+                          ),
+                        DashboardState.analyzing => const _AnalyzingView(),
+                        DashboardState.error => _ErrorView(
+                            message: provider.errorMessage ??
+                                'Unable to complete analysis.',
+                            onRetry: provider.analyze,
+                          ),
+                        DashboardState.results =>
+                          _ResultsView(provider: provider),
+                      },
                     ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 320),
-                        child: switch (provider.state) {
-                          DashboardState.initial => _InitialView(
-                              onStartAnalysis: provider.analyze,
-                            ),
-                          DashboardState.analyzing => const _AnalyzingView(),
-                          DashboardState.error => _ErrorView(
-                              message: provider.errorMessage ??
-                                  'Unable to complete analysis.',
-                              onRetry: provider.analyze,
-                            ),
-                          DashboardState.results =>
-                            _ResultsView(provider: provider),
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
+
+    if (embedInParentScaffold) {
+      return content;
+    }
+
+    return Scaffold(body: content);
   }
 }
 

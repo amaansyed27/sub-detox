@@ -97,3 +97,4 @@ The backend exposes two complementary API surfaces:
 - [usage-guide.md](usage-guide.md) - end-user usage and full feature testing.
 - [self-testing-guide.md](self-testing-guide.md) - engineering QA runbook.
 - [cloud-run-deploy-guide.md](cloud-run-deploy-guide.md) - deployment guide.
+- [rules-engine-working.md](rules-engine-working.md) - detailed rules/AI flow design with Mermaid architecture chart.

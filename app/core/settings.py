@@ -64,6 +64,18 @@ class Settings(BaseModel):
     gemini_model: str = Field(
         default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     )
+    gemini_chat_enabled: bool = Field(
+        default_factory=lambda: _env_bool("GEMINI_CHAT_ENABLED", True)
+    )
+    gemini_chat_model: str = Field(
+        default_factory=lambda: os.getenv(
+            "GEMINI_CHAT_MODEL",
+            os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        )
+    )
+    gemini_chat_grounding_enabled: bool = Field(
+        default_factory=lambda: _env_bool("GEMINI_GROUNDING_ENABLED", True)
+    )
     gemini_timeout_seconds: float = Field(
         default_factory=lambda: float(os.getenv("GEMINI_TIMEOUT_SECONDS", "8")),
         ge=1,

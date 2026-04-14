@@ -8,6 +8,7 @@ from app.services.analysis_service import SubscriptionAnalysisService
 from app.services.datastore import BaseDataStore, FirestoreDataStore, InMemoryDataStore
 from app.services.firebase_runtime import get_firestore_client
 from app.services.gemini_analysis_service import GeminiAnalysisService
+from app.services.gemini_chat_service import GeminiChatService
 from app.services.mock_aa_service import MockAAService
 
 
@@ -48,10 +49,20 @@ def get_gateway_service() -> AAGatewayService:
             timeout_seconds=settings.gemini_timeout_seconds,
         )
 
+    gemini_chat_service = None
+    if settings.gemini_chat_enabled and settings.gemini_api_key.strip():
+        gemini_chat_service = GeminiChatService(
+            api_key=settings.gemini_api_key,
+            model=settings.gemini_chat_model,
+            timeout_seconds=settings.gemini_timeout_seconds,
+            grounding_enabled=settings.gemini_chat_grounding_enabled,
+        )
+
     _gateway = AAGatewayService(
         store=get_data_store(),
         analysis_service=SubscriptionAnalysisService(),
         mock_aa_service=MockAAService(),
         gemini_analysis_service=gemini_service,
+        gemini_chat_service=gemini_chat_service,
     )
     return _gateway

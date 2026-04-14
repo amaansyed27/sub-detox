@@ -7,8 +7,7 @@ import 'package:provider/provider.dart';
 import 'providers/account_linking_provider.dart';
 import 'providers/analysis_provider.dart';
 import 'providers/auth_provider.dart';
-import 'screens/account_linking_screen.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/app_shell_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/analysis_api_service.dart';
 import 'services/auth_service.dart';
@@ -117,11 +116,8 @@ class SubDetoxApp extends StatelessWidget {
                         accountLinkingState == AccountLinkingState.saving ||
                         accountLinkingState == AccountLinkingState.error;
 
-                if (needsAccountLinking) {
-                  return const AccountLinkingScreen();
-                }
-
-                return const DashboardScreen();
+                return AppShellScreen(
+                    initialIndex: needsAccountLinking ? 1 : 0);
               case AuthStatus.unauthenticated:
               case AuthStatus.error:
                 return const LoginScreen();

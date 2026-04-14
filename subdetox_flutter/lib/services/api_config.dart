@@ -111,6 +111,14 @@ class ApiConfig {
 
   static Uri get accountSelectionUri => _uri('/v2/account-selection');
 
+  static Uri get manualUploadUri => _uri('/manual-upload');
+
+  static Uri get chatAssistUri => _uri('/chat/assist');
+
+  static Uri get chatTicketsUri => _uri('/chat/tickets');
+
+  static Uri get chatRequestsUri => _uri('/chat/requests');
+
   static Map<String, String> authHeaders(String idToken) {
     return {
       'Content-Type': 'application/json',

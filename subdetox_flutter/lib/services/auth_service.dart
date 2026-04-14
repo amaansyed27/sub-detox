@@ -15,6 +15,8 @@ class AuthService {
 
   String? get currentPhoneNumber => _auth.currentUser?.phoneNumber;
 
+  String? get currentEmail => _auth.currentUser?.email;
+
   Future<UserCredential> signInWithEmailPassword({
     required String email,
     required String password,

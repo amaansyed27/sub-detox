@@ -37,6 +37,7 @@ from app.services.mock_aa_service import MockAAService
 
 if TYPE_CHECKING:
     from app.services.gemini_analysis_service import GeminiAnalysisService
+    from app.services.gemini_chat_service import GeminiChatService
 
 
 FIP_CATALOG: tuple[dict[str, Any], ...] = (
@@ -74,11 +75,16 @@ class AAGatewayService:
         analysis_service: SubscriptionAnalysisService | None = None,
         mock_aa_service: MockAAService | None = None,
         gemini_analysis_service: "GeminiAnalysisService | None" = None,
+        gemini_chat_service: "GeminiChatService | None" = None,
     ) -> None:
         self._store = store
         self._analysis_service = analysis_service or SubscriptionAnalysisService()
         self._mock_aa_service = mock_aa_service or MockAAService()
         self._gemini_analysis_service = gemini_analysis_service
+        self._gemini_chat_service = gemini_chat_service
+        self._manual_uploads: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self._support_tickets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self._service_requests: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     @staticmethod
     def _trace_id() -> str:
@@ -1031,6 +1037,308 @@ class AAGatewayService:
             "email": user.email,
             "phone_number": user.phone_number,
             "profile": profile,
+        }
+
+    def submit_manual_upload(
+        self,
+        user: CurrentUser,
+        file_name: str,
+        content: str,
+        upload_method: str,
+    ) -> dict[str, Any]:
+        normalized_name = file_name.strip() or "manual-entry.txt"
+        lines = [line.strip() for line in content.splitlines() if line.strip()]
+        records_parsed = len(lines)
+
+        recurring_markers = {
+            "autopay",
+            "subscription",
+            "emi",
+            "renewal",
+            "mandate",
+            "monthly",
+            "netflix",
+            "prime",
+            "spotify",
+            "youtube",
+            "hotstar",
+        }
+        estimated_subscriptions = sum(
+            1
+            for line in lines
+            if any(marker in line.lower() for marker in recurring_markers)
+        )
+        if records_parsed > 0 and estimated_subscriptions == 0:
+            estimated_subscriptions = max(1, records_parsed // 12)
+
+        upload_id = f"UPL-{uuid4().hex[:10].upper()}"
+        record = {
+            "uploadId": upload_id,
+            "userId": user.uid,
+            "fileName": normalized_name,
+            "uploadMethod": upload_method,
+            "recordsParsed": records_parsed,
+            "estimatedSubscriptions": estimated_subscriptions,
+            "createdAt": utc_now(),
+        }
+        self._manual_uploads[user.uid].append(record)
+
+        self._store.create_audit_event(
+            {
+                "userId": user.uid,
+                "eventType": "MANUAL_UPLOAD_SUBMITTED",
+                "uploadId": upload_id,
+                "recordsParsed": records_parsed,
+                "estimatedSubscriptions": estimated_subscriptions,
+                "createdAt": utc_now(),
+            }
+        )
+
+        return {
+            "uploadId": upload_id,
+            "status": "RECEIVED",
+            "recordsParsed": records_parsed,
+            "estimatedSubscriptions": estimated_subscriptions,
+            "nextSteps": [
+                "Review parsed recurring hints in the Accounts tab.",
+                "Run AI Analysis from Home to merge upload context with transaction intelligence.",
+                "Use Chat tab to generate a support ticket if any debit looks suspicious.",
+            ],
+            "traceId": self._trace_id(),
+        }
+
+    def create_support_ticket(
+        self,
+        user: CurrentUser,
+        title: str,
+        description: str,
+        category: str,
+        priority: str,
+    ) -> dict[str, Any]:
+        ticket_id = f"TKT-{uuid4().hex[:8].upper()}"
+        created_at = utc_now()
+        record = {
+            "ticketId": ticket_id,
+            "userId": user.uid,
+            "title": title.strip(),
+            "description": description.strip(),
+            "category": category.strip().upper() or "BANKING_HELP",
+            "priority": priority.strip().upper() or "MEDIUM",
+            "status": "OPEN",
+            "createdAt": created_at,
+        }
+        self._support_tickets[user.uid].append(record)
+
+        self._store.create_audit_event(
+            {
+                "userId": user.uid,
+                "eventType": "SUPPORT_TICKET_CREATED",
+                "ticketId": ticket_id,
+                "category": record["category"],
+                "priority": record["priority"],
+                "createdAt": created_at,
+            }
+        )
+
+        return {
+            "ticketId": ticket_id,
+            "status": "OPEN",
+            "message": "Support ticket created successfully.",
+            "createdAt": created_at,
+            "traceId": self._trace_id(),
+        }
+
+    def create_service_request(
+        self,
+        user: CurrentUser,
+        request_type: str,
+        details: str,
+        account_link_ref_number: str | None,
+    ) -> dict[str, Any]:
+        request_id = f"REQ-{uuid4().hex[:8].upper()}"
+        created_at = utc_now()
+
+        record = {
+            "requestId": request_id,
+            "userId": user.uid,
+            "requestType": request_type.strip().upper(),
+            "details": details.strip(),
+            "accountLinkRefNumber": account_link_ref_number,
+            "status": "SUBMITTED",
+            "createdAt": created_at,
+        }
+        self._service_requests[user.uid].append(record)
+
+        self._store.create_audit_event(
+            {
+                "userId": user.uid,
+                "eventType": "SERVICE_REQUEST_CREATED",
+                "requestId": request_id,
+                "requestType": record["requestType"],
+                "accountLinkRefNumber": account_link_ref_number,
+                "createdAt": created_at,
+            }
+        )
+
+        return {
+            "requestId": request_id,
+            "status": "SUBMITTED",
+            "message": "Service request submitted successfully.",
+            "createdAt": created_at,
+            "traceId": self._trace_id(),
+        }
+
+    @staticmethod
+    def _suggested_actions_for_message(message: str) -> list[str]:
+        lowered = message.lower()
+        actions: list[str] = []
+
+        if any(term in lowered for term in ["fraud", "unauthor", "chargeback", "wrong debit"]):
+            actions.append("CREATE_SUPPORT_TICKET")
+        if any(term in lowered for term in ["mandate", "autopay", "revoke", "cancel"]):
+            actions.append("RAISE_BANK_REQUEST")
+        if any(term in lowered for term in ["upload", "statement", "csv", "pdf"]):
+            actions.append("OPEN_MANUAL_UPLOAD")
+
+        if not actions:
+            actions = ["CREATE_SUPPORT_TICKET", "RAISE_BANK_REQUEST"]
+
+        return actions
+
+    def _fallback_chat_reply(self, message: str) -> str:
+        lowered = message.lower()
+        if "mandate" in lowered or "autopay" in lowered:
+            return (
+                "To stop recurring debits, first identify the merchant in Accounts, then "
+                "raise a revoke request. Keep the last transaction ID for bank follow-up."
+            )
+        if "fraud" in lowered or "unauthor" in lowered:
+            return (
+                "Immediately block the channel in your bank app, create a support ticket, "
+                "and submit a written dispute request within 24 hours."
+            )
+        if "credit score" in lowered or "emi" in lowered:
+            return (
+                "Prioritize on-time EMI payments, keep utilization under 30%, and avoid "
+                "closing old credit lines without checking impact."
+            )
+        return (
+            "I can help with subscription audits, mandate revocations, dispute workflows, "
+            "and practical banking how-to guidance. Ask a specific question to continue."
+        )
+
+    def assist_chat(
+        self,
+        user: CurrentUser,
+        message: str,
+        history: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        cleaned_message = " ".join(message.strip().split())
+        if not cleaned_message:
+            raise HTTPException(status_code=400, detail="message is required")
+
+        prompt_history = [
+            {
+                "role": item.get("role", "user"),
+                "content": " ".join(str(item.get("content", "")).split()),
+            }
+            for item in history[-10:]
+            if str(item.get("content", "")).strip()
+        ]
+
+        suggested_actions = self._suggested_actions_for_message(cleaned_message)
+        grounded = False
+        sources: list[dict[str, str]] = []
+
+        if self._gemini_chat_service is not None:
+            instructions = {
+                "role": "You are SubDetox banking assistant for Indian users.",
+                "tasks": [
+                    "Give practical and compliant banking guidance.",
+                    "Explain mandates, recurring debits, charge disputes, and subscription controls.",
+                    "When relevant, mention realistic next actions in sequence.",
+                ],
+                "response_format": {
+                    "reply": "string",
+                    "suggestedActions": [
+                        "CREATE_SUPPORT_TICKET",
+                        "RAISE_BANK_REQUEST",
+                        "OPEN_MANUAL_UPLOAD",
+                    ],
+                },
+            }
+
+            prompt = (
+                "Return only valid JSON with keys reply and suggestedActions. "
+                "Do not include markdown.\n"
+                f"Instructions: {json.dumps(instructions, ensure_ascii=True)}\n"
+                f"Recent chat history: {json.dumps(prompt_history, ensure_ascii=True)}\n"
+                f"User message: {json.dumps(cleaned_message, ensure_ascii=True)}"
+            )
+
+            try:
+                gemini_payload = self._gemini_chat_service.ask(prompt=prompt)
+                reply = str(gemini_payload.get("reply", "")).strip()
+                if not reply:
+                    reply = self._fallback_chat_reply(cleaned_message)
+                gemini_actions = gemini_payload.get("suggestedActions", [])
+                if isinstance(gemini_actions, list):
+                    merged_actions = [
+                        action
+                        for action in gemini_actions
+                        if isinstance(action, str) and action.strip()
+                    ]
+                    if merged_actions:
+                        suggested_actions = merged_actions
+                grounded = bool(gemini_payload.get("grounded", False))
+                raw_sources = gemini_payload.get("sources", [])
+                if isinstance(raw_sources, list):
+                    for item in raw_sources:
+                        if not isinstance(item, dict):
+                            continue
+                        title = item.get("title")
+                        url = item.get("url")
+                        if not isinstance(url, str) or not url.strip():
+                            continue
+                        sources.append(
+                            {
+                                "title": title.strip()
+                                if isinstance(title, str) and title.strip()
+                                else "Source",
+                                "url": url.strip(),
+                            }
+                        )
+            except Exception as exc:  # noqa: BLE001
+                reply = self._fallback_chat_reply(cleaned_message)
+                sources = []
+                grounded = False
+                self._store.create_audit_event(
+                    {
+                        "userId": user.uid,
+                        "eventType": "CHAT_ASSIST_FALLBACK",
+                        "reason": str(exc),
+                        "createdAt": utc_now(),
+                    }
+                )
+        else:
+            reply = self._fallback_chat_reply(cleaned_message)
+
+        self._store.create_audit_event(
+            {
+                "userId": user.uid,
+                "eventType": "CHAT_ASSIST_RESPONSE",
+                "grounded": grounded,
+                "suggestedActions": suggested_actions,
+                "createdAt": utc_now(),
+            }
+        )
+
+        return {
+            "reply": reply,
+            "grounded": grounded,
+            "sources": sources[:6],
+            "suggestedActions": suggested_actions,
+            "traceId": self._trace_id(),
         }
 
     def get_mock_aa_data(self, user: CurrentUser) -> dict[str, Any]:

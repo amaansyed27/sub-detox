@@ -7,6 +7,16 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from app.dependencies.auth import CurrentUser, get_current_user
 from app.dependencies.services import get_gateway_service
 from app.schemas.analysis import AnalyzeTransactionsRequest
+from app.schemas.chat import (
+    ChatAssistRequest,
+    ChatAssistResponse,
+    ManualUploadRequest,
+    ManualUploadResponse,
+    ServiceRequestCreateRequest,
+    ServiceRequestCreateResponse,
+    SupportTicketRequest,
+    SupportTicketResponse,
+)
 from app.services.aa_gateway_service import AAGatewayService
 
 
@@ -53,3 +63,67 @@ def revoke_mandate(
     if not merchant_code:
         raise HTTPException(status_code=400, detail="merchant_code is required.")
     return gateway.revoke_mandate(user=user, merchant_code=merchant_code)
+
+
+@router.post("/manual-upload", response_model=ManualUploadResponse)
+def manual_upload(
+    gateway: GatewayDep,
+    user: CurrentUserDep,
+    request_body: ManualUploadRequest,
+) -> ManualUploadResponse:
+    return ManualUploadResponse.model_validate(
+        gateway.submit_manual_upload(
+            user=user,
+            file_name=request_body.file_name,
+            content=request_body.content,
+            upload_method=request_body.upload_method,
+        )
+    )
+
+
+@router.post("/chat/assist", response_model=ChatAssistResponse)
+def assist_chat(
+    gateway: GatewayDep,
+    user: CurrentUserDep,
+    request_body: ChatAssistRequest,
+) -> ChatAssistResponse:
+    return ChatAssistResponse.model_validate(
+        gateway.assist_chat(
+            user=user,
+            message=request_body.message,
+            history=[item.model_dump() for item in request_body.history],
+        )
+    )
+
+
+@router.post("/chat/tickets", response_model=SupportTicketResponse)
+def create_support_ticket(
+    gateway: GatewayDep,
+    user: CurrentUserDep,
+    request_body: SupportTicketRequest,
+) -> SupportTicketResponse:
+    return SupportTicketResponse.model_validate(
+        gateway.create_support_ticket(
+            user=user,
+            title=request_body.title,
+            description=request_body.description,
+            category=request_body.category,
+            priority=request_body.priority,
+        )
+    )
+
+
+@router.post("/chat/requests", response_model=ServiceRequestCreateResponse)
+def create_service_request(
+    gateway: GatewayDep,
+    user: CurrentUserDep,
+    request_body: ServiceRequestCreateRequest,
+) -> ServiceRequestCreateResponse:
+    return ServiceRequestCreateResponse.model_validate(
+        gateway.create_service_request(
+            user=user,
+            request_type=request_body.request_type,
+            details=request_body.details,
+            account_link_ref_number=request_body.account_link_ref_number,
+        )
+    )

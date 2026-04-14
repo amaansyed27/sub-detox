@@ -40,6 +40,7 @@ class AuthProvider extends ChangeNotifier {
   String? get lastPhoneNumber => _lastPhoneNumber;
   String? get activePhoneNumber =>
       _verifiedPhoneNumber ?? _authService.currentPhoneNumber;
+  String? get activeEmail => _authService.currentEmail;
 
   String get otpCooldownLabel {
     final minutes = (_otpCooldownSeconds ~/ 60).toString().padLeft(2, '0');
