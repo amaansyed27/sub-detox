@@ -8,7 +8,13 @@ Premium fintech mobile dashboard for analyzing recurring transaction leakage fro
 2. Install dependencies:
    - `flutter pub get`
 3. Start app:
-   - `flutter run --dart-define=FIREBASE_PROJECT_ID=<your-firebase-project-id> --dart-define=BACKEND_MODE=fastapi-local`
+   - `flutter run`
+
+Optional overrides for custom environments:
+
+- `--dart-define=BACKEND_MODE=fastapi-local`
+- `--dart-define=LOCAL_API_HOST=<your-lan-ip>`
+- `--dart-define=CLOUD_RUN_URL=<your-cloud-run-url>`
 
 ## Auth To Analysis Flow
 

@@ -13,7 +13,7 @@ class ApiConfig {
 
   static const String projectId = String.fromEnvironment(
     'FIREBASE_PROJECT_ID',
-    defaultValue: '',
+    defaultValue: 'subdetox-20260412-8514',
   );
 
   static const int fastApiLocalPort = int.fromEnvironment(
@@ -28,17 +28,8 @@ class ApiConfig {
 
   static const String cloudRunUrl = String.fromEnvironment(
     'CLOUD_RUN_URL',
-    defaultValue: '',
+    defaultValue: 'https://subdetox-api-wiz4yigmpq-el.a.run.app',
   );
-
-  static String get _configuredProjectId {
-    if (projectId.isEmpty) {
-      throw StateError(
-        'Missing FIREBASE_PROJECT_ID. Pass it with --dart-define=FIREBASE_PROJECT_ID=<value>.',
-      );
-    }
-    return projectId;
-  }
 
   static const bool useEmulator = bool.fromEnvironment(
     'FIREBASE_USE_EMULATOR',
@@ -67,13 +58,12 @@ class ApiConfig {
   }
 
   static Uri _emulatorUri(String path) {
-    return Uri.parse(
-        'http://$_host:5001/$_configuredProjectId/asia-south1/api$path');
+    return Uri.parse('http://$_host:5001/$projectId/asia-south1/api$path');
   }
 
   static Uri _cloudUri(String path) {
     return Uri.parse(
-        'https://asia-south1-$_configuredProjectId.cloudfunctions.net/api$path');
+        'https://asia-south1-$projectId.cloudfunctions.net/api$path');
   }
 
   static Uri _fastApiLocalUri(String path) {
