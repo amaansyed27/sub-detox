@@ -59,3 +59,25 @@ def test_manual_upload_chat_and_support_actions(client):
     request_json = request.json()
     assert request_json["requestId"].startswith("REQ-")
     assert request_json["status"] == "SUBMITTED"
+
+
+def test_chat_reads_leakage_auditor_subscriptions(client):
+    analyze = client.post("/api/analyze-transactions", json={})
+    assert analyze.status_code == 200
+    analyze_json = analyze.json()
+    assert analyze_json["detected_subscriptions"]
+    top = analyze_json["detected_subscriptions"][0]
+
+    chat = client.post(
+        "/api/chat/assist",
+        json={
+            "message": "what the most expensive recurring plan i have right now",
+            "history": [],
+        },
+    )
+
+    assert chat.status_code == 200
+    chat_json = chat.json()
+    reply = chat_json["reply"].lower()
+    assert str(top["display_name"]).lower() in reply
+    assert "do not have direct access" not in reply

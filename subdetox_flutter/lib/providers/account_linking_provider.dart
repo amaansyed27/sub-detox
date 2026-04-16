@@ -37,6 +37,7 @@ class AccountLinkingProvider extends ChangeNotifier {
   String? get mobileNumber => _mobileNumber;
   List<LinkedBankInstitution> get linkedBanks => _linkedBanks;
   bool get needsOnboarding => _needsOnboarding;
+  bool get requiresMobileNumber => (_mobileNumber ?? '').isEmpty;
   bool get isLoading =>
       _state == AccountLinkingState.loading ||
       _state == AccountLinkingState.saving;
@@ -98,46 +99,27 @@ class AccountLinkingProvider extends ChangeNotifier {
         );
       }
 
+      final profile = await _apiService.fetchUserSelectionProfile(idToken);
+
       final resolvedMobile =
-          _resolveMobileNumber(authProvider.activePhoneNumber);
+          _resolveMobileNumber(authProvider.activePhoneNumber) ??
+              _resolveMobileNumber(profile.selectionMobileNumber);
       _mobileNumber = resolvedMobile;
 
       if (resolvedMobile == null) {
-        _needsOnboarding = false;
+        _needsOnboarding = true;
         _linkedBanks = const [];
         _selectedLinkRefNumbers = <String>{};
-        _state = AccountLinkingState.completed;
+        _state = AccountLinkingState.ready;
         notifyListeners();
         return;
       }
 
-      final profile = await _apiService.fetchUserSelectionProfile(idToken);
-      final existingSelection =
-          profile.hasSelectedAccountsForMobile(resolvedMobile)
-              ? profile.selectedLinkRefNumbers.toSet()
-              : <String>{};
-
-      final availability = await _apiService.fetchAccountAvailability(
+      await _loadLinkedAccounts(
         idToken: idToken,
+        profile: profile,
         mobileNumber: resolvedMobile,
       );
-
-      _linkedBanks = availability.linkedBanks;
-      final availableLinkRefs = _linkedBanks
-          .expand((bank) => bank.accounts)
-          .map((account) => account.linkRefNumber)
-          .where((ref) => ref.isNotEmpty)
-          .toSet();
-      final preselected = existingSelection.intersection(availableLinkRefs);
-
-      _selectedLinkRefNumbers = preselected.isNotEmpty
-          ? preselected
-          : _defaultSelection(_linkedBanks);
-      _needsOnboarding = _linkedBanks.isNotEmpty;
-      _state = _needsOnboarding
-          ? AccountLinkingState.ready
-          : AccountLinkingState.completed;
-      notifyListeners();
     } on AnalysisApiException catch (error) {
       if (error.statusCode == 401) {
         await authProvider.signOut();
@@ -154,6 +136,59 @@ class AccountLinkingProvider extends ChangeNotifier {
       notifyListeners();
     } finally {
       _isBootstrapping = false;
+    }
+  }
+
+  Future<void> discoverLinkedAccountsForMobile(String mobileInput) async {
+    final authProvider = _authProvider;
+    if (authProvider == null || !authProvider.isAuthenticated) {
+      return;
+    }
+
+    final resolvedMobile = _resolveMobileNumber(mobileInput);
+    if (resolvedMobile == null) {
+      _state = AccountLinkingState.ready;
+      _errorMessage = 'Enter a valid mobile number (for example +919272078963).';
+      _needsOnboarding = true;
+      notifyListeners();
+      return;
+    }
+
+    _state = AccountLinkingState.loading;
+    _errorMessage = null;
+    _needsOnboarding = true;
+    notifyListeners();
+
+    try {
+      final idToken = await authProvider.getIdToken();
+      if (idToken == null) {
+        throw AnalysisApiException(
+          'Missing auth token. Please sign in again.',
+          statusCode: 401,
+        );
+      }
+
+      final profile = await _apiService.fetchUserSelectionProfile(idToken);
+      _mobileNumber = resolvedMobile;
+      await _loadLinkedAccounts(
+        idToken: idToken,
+        profile: profile,
+        mobileNumber: resolvedMobile,
+      );
+    } on AnalysisApiException catch (error) {
+      if (error.statusCode == 401) {
+        await authProvider.signOut();
+        return;
+      }
+      _state = AccountLinkingState.error;
+      _errorMessage = error.message;
+      _needsOnboarding = true;
+      notifyListeners();
+    } catch (_) {
+      _state = AccountLinkingState.error;
+      _errorMessage = 'Unable to load linked accounts right now. Please retry.';
+      _needsOnboarding = true;
+      notifyListeners();
     }
   }
 
@@ -228,6 +263,51 @@ class AccountLinkingProvider extends ChangeNotifier {
     await bootstrap();
   }
 
+  Future<void> _loadLinkedAccounts({
+    required String idToken,
+    required UserSelectionProfile profile,
+    required String mobileNumber,
+  }) async {
+    final existingSelection = profile.hasSelectedAccountsForMobile(mobileNumber)
+        ? profile.selectedLinkRefNumbers.toSet()
+        : <String>{};
+
+    final availability = await _apiService.fetchAccountAvailability(
+      idToken: idToken,
+      mobileNumber: mobileNumber,
+    );
+
+    _linkedBanks = availability.linkedBanks;
+    final availableLinkRefs = _linkedBanks
+        .expand((bank) => bank.accounts)
+        .map((account) => account.linkRefNumber)
+        .where((ref) => ref.isNotEmpty)
+        .toSet();
+    final preselected = existingSelection.intersection(availableLinkRefs);
+
+    _selectedLinkRefNumbers =
+        preselected.isNotEmpty ? preselected : _defaultSelection(_linkedBanks);
+    _errorMessage = null;
+
+    if (_linkedBanks.isEmpty) {
+      _needsOnboarding = true;
+      _state = AccountLinkingState.ready;
+      notifyListeners();
+      return;
+    }
+
+    if (preselected.isNotEmpty) {
+      _needsOnboarding = false;
+      _state = AccountLinkingState.completed;
+      notifyListeners();
+      return;
+    }
+
+    _needsOnboarding = true;
+    _state = AccountLinkingState.ready;
+    notifyListeners();
+  }
+
   void _resetForSignedOutUser() {
     final hasState = _state != AccountLinkingState.idle ||
         _errorMessage != null ||
@@ -269,7 +349,7 @@ class AccountLinkingProvider extends ChangeNotifier {
     }
 
     final digits = value.replaceAll(RegExp(r'\D'), '');
-    if (digits.isEmpty) {
+    if (digits.length < 10) {
       return null;
     }
 

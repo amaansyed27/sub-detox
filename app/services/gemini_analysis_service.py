@@ -136,7 +136,7 @@ class GeminiAnalysisService:
     @staticmethod
     def _parse_reasoning_map(response_text: str) -> dict[str, str]:
         cleaned = response_text.strip()
-        fenced_match = re.search(r"```(?:json)?\s*(\{[\s\S]*\})\s*```", cleaned)
+        fenced_match = re.search(r"```(?:json)?\s*([\[{][\s\S]*[\]}])\s*```", cleaned)
         if fenced_match:
             cleaned = fenced_match.group(1).strip()
 
@@ -145,16 +145,23 @@ class GeminiAnalysisService:
         except json.JSONDecodeError as exc:
             raise GeminiAnalysisError("Gemini returned non-JSON content.") from exc
 
-        items = payload.get("items", [])
-        if not isinstance(items, list):
+        items: list[Any]
+        if isinstance(payload, list):
+            items = payload
+        elif isinstance(payload, dict):
+            raw_items = payload.get("items", payload.get("data", []))
+            if not isinstance(raw_items, list):
+                return {}
+            items = raw_items
+        else:
             return {}
 
         output: dict[str, str] = {}
         for item in items:
             if not isinstance(item, dict):
                 continue
-            merchant_code = item.get("merchant_code")
-            reasoning = item.get("reasoning")
+            merchant_code = item.get("merchant_code") or item.get("merchantCode")
+            reasoning = item.get("reasoning") or item.get("reason")
             if not isinstance(merchant_code, str) or not isinstance(reasoning, str):
                 continue
             normalized_reasoning = " ".join(reasoning.strip().split())

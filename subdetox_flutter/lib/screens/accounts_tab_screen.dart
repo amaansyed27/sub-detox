@@ -1,17 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/linked_bank_models.dart';
 import '../providers/account_linking_provider.dart';
 
-class AccountsTabScreen extends StatelessWidget {
+class AccountsTabScreen extends StatefulWidget {
   const AccountsTabScreen({super.key});
+
+  @override
+  State<AccountsTabScreen> createState() => _AccountsTabScreenState();
+}
+
+class _AccountsTabScreenState extends State<AccountsTabScreen> {
+  final TextEditingController _mobileController = TextEditingController();
+
+  @override
+  void dispose() {
+    _mobileController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Consumer<AccountLinkingProvider>(
         builder: (context, provider, _) {
+          final providerMobile = (provider.mobileNumber ?? '').trim();
+          if (providerMobile.isNotEmpty && providerMobile != _mobileController.text) {
+            _mobileController.text = providerMobile;
+          }
+
+          final showMobileLookup =
+              provider.requiresMobileNumber || provider.linkedBanks.isEmpty;
+
           return Column(
             children: [
               Padding(
@@ -61,6 +83,17 @@ class AccountsTabScreen extends StatelessWidget {
                     textColor: Color(0xFF166534),
                   ),
                 ),
+              if (showMobileLookup)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _MobileLookupCard(
+                    controller: _mobileController,
+                    isLoading: provider.isLoading,
+                    onLookup: () => provider.discoverLinkedAccountsForMobile(
+                      _mobileController.text,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 8),
               Expanded(
                 child: provider.isLoading
@@ -78,7 +111,7 @@ class AccountsTabScreen extends StatelessWidget {
                                     Border.all(color: const Color(0xFFD6E0EC)),
                               ),
                               child: Text(
-                                'No linked accounts found. Tap refresh to retry.',
+                                'No linked accounts found. Enter a mobile number and retry.',
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),
@@ -144,6 +177,66 @@ class AccountsTabScreen extends StatelessWidget {
     }
 
     return 'xxxxxx${digits.substring(digits.length - 4)}';
+  }
+}
+
+class _MobileLookupCard extends StatelessWidget {
+  const _MobileLookupCard({
+    required this.controller,
+    required this.isLoading,
+    required this.onLookup,
+  });
+
+  final TextEditingController controller;
+  final bool isLoading;
+  final Future<void> Function() onLookup;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD6E0EC)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Enter mobile number to find linked accounts.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: controller,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Mobile number',
+              hintText: '+919272078963',
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      onLookup();
+                    },
+              icon: const Icon(Icons.search),
+              label: const Text('Find Accounts'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

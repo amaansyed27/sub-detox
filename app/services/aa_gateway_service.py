@@ -1205,7 +1205,161 @@ class AAGatewayService:
 
         return actions
 
-    def _fallback_chat_reply(self, message: str) -> str:
+    @staticmethod
+    def _format_currency(amount: float, currency: str) -> str:
+        code = currency.strip().upper() or "INR"
+        return f"{code} {amount:,.2f}"
+
+    def _auditor_snapshot_for_chat(self, user: CurrentUser) -> dict[str, Any]:
+        latest = self.get_latest_analysis(user)
+        if latest is None:
+            return {
+                "has_data": False,
+                "currency": "INR",
+                "generated_at": None,
+                "active_count": 0,
+                "resolved_count": 0,
+                "total_monthly_leakage": 0.0,
+                "active_subscriptions": [],
+            }
+
+        rows = latest.get("detected_subscriptions", [])
+        subscriptions: list[dict[str, Any]] = []
+        if isinstance(rows, list):
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                subscriptions.append(
+                    {
+                        "merchant_code": str(row.get("merchant_code", "")).strip(),
+                        "display_name": str(row.get("display_name", "")).strip(),
+                        "threat_level": str(row.get("threat_level", "")).strip(),
+                        "estimated_monthly_amount": float(
+                            row.get("estimated_monthly_amount", 0.0)
+                        ),
+                        "resolved": bool(row.get("resolved", False)),
+                    }
+                )
+
+        active = [item for item in subscriptions if not item["resolved"]]
+        active.sort(key=lambda item: item["estimated_monthly_amount"], reverse=True)
+        total_active = float(sum(item["estimated_monthly_amount"] for item in active))
+
+        return {
+            "has_data": True,
+            "currency": str(latest.get("currency", "INR")),
+            "generated_at": latest.get("generated_at"),
+            "active_count": len(active),
+            "resolved_count": len(subscriptions) - len(active),
+            "total_monthly_leakage": total_active,
+            "active_subscriptions": active[:20],
+        }
+
+    def _direct_auditor_reply(
+        self,
+        message: str,
+        auditor_snapshot: dict[str, Any],
+    ) -> str | None:
+        lowered = message.lower()
+        has_data = bool(auditor_snapshot.get("has_data", False))
+        currency = str(auditor_snapshot.get("currency", "INR"))
+        active_subscriptions = auditor_snapshot.get("active_subscriptions", [])
+        if not isinstance(active_subscriptions, list):
+            active_subscriptions = []
+
+        asks_expensive = any(
+            term in lowered
+            for term in [
+                "most expensive",
+                "highest",
+                "costliest",
+                "biggest",
+                "largest",
+            ]
+        ) and any(term in lowered for term in ["subscription", "recurring", "plan"])
+
+        asks_list = any(
+            term in lowered
+            for term in [
+                "all subscriptions",
+                "show subscriptions",
+                "list subscriptions",
+                "my subscriptions",
+                "recurring plans",
+                "recurring subscriptions",
+            ]
+        )
+
+        asks_total = any(
+            term in lowered
+            for term in [
+                "total leakage",
+                "monthly leakage",
+                "how much leakage",
+                "leakage total",
+            ]
+        )
+
+        if not has_data:
+            if asks_expensive or asks_list or asks_total or "subscription" in lowered:
+                return "I do not have a leakage scan yet. Run a scan from Home, then ask again."
+            return None
+
+        if asks_expensive:
+            if not active_subscriptions:
+                return "You currently have no active recurring subscriptions in the latest scan."
+            top = active_subscriptions[0]
+            amount = self._format_currency(
+                float(top.get("estimated_monthly_amount", 0.0)),
+                currency,
+            )
+            name = str(top.get("display_name", "Unknown subscription"))
+            return f"Your most expensive recurring subscription is {name} at {amount} per month."
+
+        if asks_total:
+            total = self._format_currency(
+                float(auditor_snapshot.get("total_monthly_leakage", 0.0)),
+                currency,
+            )
+            count = int(auditor_snapshot.get("active_count", 0))
+            return f"Your current active monthly leakage is {total} across {count} subscriptions."
+
+        if asks_list:
+            if not active_subscriptions:
+                return "You currently have no active recurring subscriptions in the latest scan."
+            top_items = active_subscriptions[:10]
+            entries = [
+                f"{item.get('display_name', 'Unknown')} ({self._format_currency(float(item.get('estimated_monthly_amount', 0.0)), currency)}/month)"
+                for item in top_items
+            ]
+            total_count = int(auditor_snapshot.get("active_count", len(active_subscriptions)))
+            suffix = "" if total_count <= len(top_items) else f" Showing top {len(top_items)} of {total_count}."
+            return f"Active subscriptions: {'; '.join(entries)}.{suffix}"
+
+        return None
+
+    @staticmethod
+    def _looks_like_no_access_reply(reply: str) -> bool:
+        lowered = reply.lower()
+        patterns = (
+            "do not have direct access",
+            "don't have direct access",
+            "cannot access your personal account",
+            "can't access your personal account",
+            "no direct access to your account",
+        )
+        return any(pattern in lowered for pattern in patterns)
+
+    def _fallback_chat_reply(
+        self,
+        message: str,
+        auditor_snapshot: dict[str, Any] | None = None,
+    ) -> str:
+        if auditor_snapshot is not None:
+            direct_reply = self._direct_auditor_reply(message, auditor_snapshot)
+            if direct_reply is not None:
+                return direct_reply
+
         lowered = message.lower()
         if "mandate" in lowered or "autopay" in lowered:
             return (
@@ -1249,13 +1403,22 @@ class AAGatewayService:
         suggested_actions = self._suggested_actions_for_message(cleaned_message)
         grounded = False
         sources: list[dict[str, str]] = []
+        auditor_snapshot = self._auditor_snapshot_for_chat(user)
+        direct_reply = self._direct_auditor_reply(cleaned_message, auditor_snapshot)
 
-        if self._gemini_chat_service is not None:
+        if direct_reply is not None:
+            reply = direct_reply
+        elif self._gemini_chat_service is not None:
             instructions = {
                 "role": "You are SubDetox banking assistant for Indian users.",
+                "data_access": (
+                    "You have access to leakage auditor data in LeakageAuditorSnapshot. "
+                    "Never claim you lack access to user subscription data when snapshot has data."
+                ),
                 "tasks": [
                     "Give practical and compliant banking guidance.",
                     "Explain mandates, recurring debits, charge disputes, and subscription controls.",
+                    "When user asks totals, most expensive plans, or list of subscriptions, answer using LeakageAuditorSnapshot.",
                     "When relevant, mention realistic next actions in sequence.",
                 ],
                 "response_format": {
@@ -1272,6 +1435,7 @@ class AAGatewayService:
                 "Return only valid JSON with keys reply and suggestedActions. "
                 "Do not include markdown.\n"
                 f"Instructions: {json.dumps(instructions, ensure_ascii=True)}\n"
+                f"LeakageAuditorSnapshot: {json.dumps(auditor_snapshot, ensure_ascii=True)}\n"
                 f"Recent chat history: {json.dumps(prompt_history, ensure_ascii=True)}\n"
                 f"User message: {json.dumps(cleaned_message, ensure_ascii=True)}"
             )
@@ -1280,7 +1444,9 @@ class AAGatewayService:
                 gemini_payload = self._gemini_chat_service.ask(prompt=prompt)
                 reply = str(gemini_payload.get("reply", "")).strip()
                 if not reply:
-                    reply = self._fallback_chat_reply(cleaned_message)
+                    reply = self._fallback_chat_reply(cleaned_message, auditor_snapshot)
+                elif self._looks_like_no_access_reply(reply):
+                    reply = self._direct_auditor_reply(cleaned_message, auditor_snapshot) or reply
                 gemini_actions = gemini_payload.get("suggestedActions", [])
                 if isinstance(gemini_actions, list):
                     merged_actions = [
@@ -1309,7 +1475,7 @@ class AAGatewayService:
                             }
                         )
             except Exception as exc:  # noqa: BLE001
-                reply = self._fallback_chat_reply(cleaned_message)
+                reply = self._fallback_chat_reply(cleaned_message, auditor_snapshot)
                 sources = []
                 grounded = False
                 self._store.create_audit_event(
@@ -1321,7 +1487,7 @@ class AAGatewayService:
                     }
                 )
         else:
-            reply = self._fallback_chat_reply(cleaned_message)
+            reply = self._fallback_chat_reply(cleaned_message, auditor_snapshot)
 
         self._store.create_audit_event(
             {
