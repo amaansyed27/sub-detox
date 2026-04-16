@@ -2,6 +2,13 @@
 
 SubDetox helps users detect and stop recurring financial leakage from subscriptions, silent auto-debits, and low-visibility mandate charges.
 
+## Download Android APK
+
+- [Download SubDetox Android APK](https://github.com/amaansyed27/sub-detox/releases/latest/download/subdetox-android.apk)
+- [View all releases](https://github.com/amaansyed27/sub-detox/releases)
+
+Note: keep the release asset filename as `subdetox-android.apk` so the direct download link always works.
+
 ## Core Features
 
 - Secure sign-up and sign-in with Firebase Auth.
