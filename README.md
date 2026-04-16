@@ -4,10 +4,10 @@ SubDetox helps users detect and stop recurring financial leakage from subscripti
 
 ## Download Android APK
 
-- [Download SubDetox Android APK](https://github.com/amaansyed27/sub-detox/releases/latest/download/subdetox-android.apk)
-- [View all releases](https://github.com/amaansyed27/sub-detox/releases)
+- [Download SubDetox Android APK](https://raw.githubusercontent.com/amaansyed27/sub-detox/main/android-apk/subdetox-android.apk)
+- [View all releases (optional)](https://github.com/amaansyed27/sub-detox/releases)
 
-Note: keep the release asset filename as `subdetox-android.apk` so the direct download link always works.
+Note: the APK is stored at `android-apk/subdetox-android.apk`. Replace this file when publishing a new build to keep the same link working.
 
 ## Core Features
 
