@@ -27,36 +27,41 @@ function App() {
       <div className="noise" />
 
       <header className="container top-nav">
-        <motion.div 
-          className="brand-block"
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="brand-logo-wrap">
-            <img src="/assets/subdetox-logo.png" alt="SubDetox logo" style={{ width: 48, height: 48 }} />
-          </div>
-          <div>
-            <p className="brand-kicker">Hackathon Build</p>
-            <h1 className="brand-title">SubDetox</h1>
-          </div>
-        </motion.div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', paddingTop: '20px' }}>
+          <motion.div 
+            className="brand-block"
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '15px' }}
+          >
+            <div className="brand-logo-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '60px', height: '60px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '15px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <img src="/assets/subdetox-logo.png" alt="SubDetox logo" style={{ width: 40, height: 40 }} />
+            </div>
+            <div>
+              <p className="brand-kicker" style={{ fontSize: '12px', color: 'var(--mint)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Hackathon Build</p>
+              <h1 className="brand-title" style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', margin: 0 }}>SubDetox</h1>
+            </div>
+          </motion.div>
 
-        <motion.div 
-          className="team-chip"
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <img src="/assets/redline-logo.png" alt="Redline logo" style={{ width: 32, height: 32 }} />
-          <span>Team {TEAM.name}</span>
-        </motion.div>
+          <motion.div 
+            className="team-chip"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.05)', padding: '10px 20px', borderRadius: '30px', border: '1px solid rgba(255, 255, 255, 0.1)' }}
+          >
+            <img src="/assets/redline-logo.png" alt="Redline logo" style={{ width: 24, height: 24 }} />
+            <span style={{ color: '#fff', fontWeight: '500' }}>Team {TEAM.name}</span>
+          </motion.div>
+        </div>
       </header>
 
       <main>
         <section className="section hero">
-          <div className="container hero-content">
+          <div className="container" style={{ display: 'flex', alignItems: 'center', gap: '50px' }}>
             <motion.div
+              style={{ flex: 1 }}
               initial="hidden"
               animate="visible"
               variants={staggerContainer}
@@ -64,14 +69,14 @@ function App() {
               <motion.div variants={fadeUp}>
                 <span className="tagline">Silent Wealth Leakage Auditor</span>
               </motion.div>
-              <motion.h2 variants={fadeUp} className="hero-title">
-                Detect, quantify, and stop subscription leaks.
+              <motion.h2 variants={fadeUp} className="hero-title" style={{ fontSize: '64px', lineHeight: '1.1', margin: '20px 0', color: '#fff' }}>
+                Detect, quantify,<br />and stop<br />subscription leaks.
               </motion.h2>
-              <motion.p variants={fadeUp} className="hero-subtitle">
+              <motion.p variants={fadeUp} className="hero-subtitle" style={{ fontSize: '20px', color: 'var(--muted)', marginBottom: '40px', maxWidth: '600px' }}>
                 SubDetox combines deterministic transaction intelligence with resilient AI guidance to help users stop recurring mandates before it compounds.
               </motion.p>
               
-              <motion.div variants={fadeUp} className="btn-group">
+              <motion.div variants={fadeUp} className="btn-group" style={{ display: 'flex', gap: '20px' }}>
                 <a className="btn btn-primary" href={LINKS.apkDownload} download>
                   <Download size={20} /> Get Android APK
                 </a>
@@ -86,25 +91,25 @@ function App() {
 
             <motion.div 
               className="glass-panel"
-              style={{ marginTop: 80 }}
+              style={{ flex: 1, padding: '40px', borderRadius: '24px' }}
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              <h3 style={{ color: 'var(--muted)', textAlign: 'left', marginBottom: 10 }}>Live Demo Metrics</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 20 }}>
-                <div style={{ padding: 20 }}>
-                  <h4 style={{ fontSize: 36, color: 'var(--mint)' }}>33</h4>
-                  <p style={{ color: 'var(--muted)', fontSize: 14 }}>Transactions Scanned</p>
+              <h3 style={{ color: 'var(--muted)', textAlign: 'left', marginBottom: 30, fontSize: '18px' }}>Live Demo Metrics</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
+                <div>
+                  <h4 style={{ fontSize: 48, color: 'var(--mint)', margin: 0, lineHeight: 1 }}>33</h4>
+                  <p style={{ color: 'var(--muted)', fontSize: 16, marginTop: 5 }}>Transactions Scanned</p>
                 </div>
-                <div style={{ padding: 20 }}>
-                  <h4 style={{ fontSize: 36, color: '#f87171' }}>4</h4>
-                  <p style={{ color: 'var(--muted)', fontSize: 14 }}>Active Risks</p>
+                <div>
+                  <h4 style={{ fontSize: 48, color: '#f87171', margin: 0, lineHeight: 1 }}>4</h4>
+                  <p style={{ color: 'var(--muted)', fontSize: 16, marginTop: 5 }}>Active Risks</p>
                 </div>
-                <div style={{ padding: 20 }}>
-                  <h4 style={{ fontSize: 36, color: '#fff' }}>₹2,390</h4>
-                  <p style={{ color: 'var(--muted)', fontSize: 14 }}>Monthly Leakage Detected</p>
+                <div>
+                  <h4 style={{ fontSize: 48, color: '#fff', margin: 0, lineHeight: 1 }}>₹2,390</h4>
+                  <p style={{ color: 'var(--muted)', fontSize: 16, marginTop: 5 }}>Monthly Leakage Detected</p>
                 </div>
               </div>
             </motion.div>
