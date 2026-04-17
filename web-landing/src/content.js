@@ -5,7 +5,7 @@ export const LINKS = {
   pptDownload: '/downloads/subdetox-hackathon-deck.pptx',
   architectureDoc:
     'https://github.com/amaansyed27/sub-detox/blob/main/rules-engine-working.md',
-  youtubeEmbed: 'https://www.youtube.com/embed/aqz-KE-bpKQ',
+  youtubeEmbed: 'https://www.youtube.com/embed/wCcy_5nlCBY',
 };
 
 export const TEAM = {
