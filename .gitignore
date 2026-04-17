@@ -25,6 +25,8 @@ build/
 # Node / Functions
 node_modules/
 functions/node_modules/
+web-landing/dist/
+web-landing/.vercel/
 
 # Firebase
 .firebase/
