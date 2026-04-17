@@ -2,7 +2,7 @@ export const LINKS = {
   githubRepo: 'https://github.com/amaansyed27/sub-detox',
   apkDownload:
     'https://raw.githubusercontent.com/amaansyed27/sub-detox/main/android-apk/subdetox-android.apk',
-  pptDownload: '/downloads/subdetox-hackathon-deck.pptx',
+  pptDownload: '/downloads/subdetox-team-redline-pitch-deck.pdf',
   architectureDoc:
     'https://github.com/amaansyed27/sub-detox/blob/main/rules-engine-working.md',
   youtubeEmbed: 'https://www.youtube.com/embed/wCcy_5nlCBY',

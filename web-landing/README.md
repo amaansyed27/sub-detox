@@ -1,46 +1,62 @@
 # SubDetox Web Landing
 
-Vite + React landing site for SubDetox hackathon presentation, resources, and demo walkthrough.
+Vite + React landing site for SubDetox — deployed at **[subdetox.vercel.app](https://subdetox.vercel.app/)**.
 
-## Includes
+## Features
 
-- Immersive animated hero section
-- APK + PPT download buttons
-- GitHub repository link
-- Working architecture and flow sections
-- YouTube walkthrough embed block
-- Team Redline section
+- Animated, cursor-interactive hero SVG with parallax layers
+- Problem statement & scale statistics (RBI UPI data)
+- Solution overview with Expose → Decide → Revoke flow
+- Rules-First / AI-Enhanced / Action-Driven pillars
+- Step-by-step "How It Works" (5 stages)
+- Impact metrics (₹3K, 5s, ₹150Cr) and target audience
+- Tech stack pyramid visualization
+- Team Redline member cards
+- Demo walkthrough YouTube embed
+- APK download (hosted on GitHub) + PDF pitch deck download
 
-## Local run
+## Local Development
 
-1. Open terminal in web-landing
-2. Install dependencies:
-   npm install
-3. Start dev server:
-   npm run dev
+```bash
+cd web-landing
+npm install
+npm run dev
+```
 
 ## Build
 
+```bash
 npm run build
+```
 
-## Important link configuration
+## Important Link Configuration
 
-Edit src/content.js:
+All dynamic links are centralized in `src/content.js`:
 
-- LINKS.apkDownload
-- LINKS.pptDownload
-- LINKS.githubRepo
-- LINKS.architectureDoc
-- LINKS.youtubeEmbed
+| Key | Purpose |
+|---|---|
+| `LINKS.apkDownload` | Android APK (GitHub raw URL — works on Vercel) |
+| `LINKS.pptDownload` | Pitch deck PDF (served from `/public/downloads/`) |
+| `LINKS.githubRepo` | Repository URL |
+| `LINKS.architectureDoc` | Rules engine design doc |
+| `LINKS.youtubeEmbed` | Demo walkthrough video |
 
-## Assets used
+## Static Assets
 
-Public assets are stored under public/assets and include:
+All public assets served by Vite/Vercel from `public/`:
 
-- subdetox logo
-- redline logo
-- favicon files
+- `public/assets/` — SubDetox logo, Redline logo, favicons
+- `public/downloads/` — Pitch deck PDF, legacy deck PPTX
 
-## Deployment
+> **Note on APK downloads:** The APK is hosted on GitHub (`android-apk/subdetox-android.apk`) via raw.githubusercontent.com, so it downloads correctly from any deployment environment including Vercel.
 
-See VERCEL-DEPLOY.md for step-by-step Vercel dashboard deployment.
+## Deployment (Vercel)
+
+1. Import the `web-landing` directory as a Vercel project
+2. Framework preset: **Vite**
+3. Root directory: `web-landing`
+4. Build command: `npm run build`
+5. Output directory: `dist`
+6. Deploy — all static assets in `public/` (including the PDF deck) are automatically served
+
+See [VERCEL-DEPLOY.md](VERCEL-DEPLOY.md) for the full step-by-step guide.

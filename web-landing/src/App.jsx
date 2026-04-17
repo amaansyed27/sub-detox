@@ -5,6 +5,7 @@ import {
   Zap, Brain, ShieldCheck, LogIn, ScanSearch,
   LayoutDashboard, BellRing, EyeOff, Lock,
   AlertTriangle, Users, Clock, TrendingUp, Smartphone,
+  Shield,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════
@@ -39,7 +40,7 @@ const HeroSvgArt = () => {
 
   return (
     <div ref={wrapRef} onMouseMove={onMove} onMouseLeave={onLeave}
-         className="w-full max-w-sm md:max-w-md lg:max-w-lg cursor-crosshair mx-auto md:mx-0">
+         className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-xl cursor-crosshair mx-auto md:mx-0">
       <svg viewBox="0 0 400 360" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
         {/* Static label */}
         <text x="200" y="350" fontSize="9" fontFamily="serif" textAnchor="middle"
@@ -244,13 +245,13 @@ function App() {
                   <a href={LINKS.apkDownload} className="stamped-btn-sage flex items-center gap-2 px-5 md:px-6 py-3 font-serif font-semibold text-base md:text-lg">
                     <Download size={20} strokeWidth={2.5} /> Get Android APK
                   </a>
-                  <a href={LINKS.pptDownload} className="stamped-btn-dark flex items-center gap-2 px-5 md:px-6 py-3 font-serif font-semibold text-base md:text-lg">
+                  <a href={LINKS.pptDownload} target="_blank" rel="noreferrer" className="stamped-btn-dark flex items-center gap-2 px-5 md:px-6 py-3 font-serif font-semibold text-base md:text-lg">
                     View Deck <ArrowUpRight size={20} strokeWidth={2.5} />
                   </a>
                 </div>
               </div>
               {/* Animated SVG — visible on all sizes */}
-              <div className="flex-shrink-0 w-full md:w-auto">
+              <div className="flex-1 w-full md:w-auto flex items-center justify-center">
                 <HeroSvgArt />
               </div>
             </div>
@@ -328,26 +329,39 @@ function App() {
           {/* ── THE SOLUTION ─────────────────────── */}
           <section className="px-5 md:px-16 lg:px-24 py-16 md:py-24 border-print-b">
             <p className="text-xs font-bold tracking-[0.25em] uppercase text-ink/50 mb-2">The Solution</p>
-            <h2 className="text-[2rem] sm:text-[2.5rem] md:text-[3.5rem] font-serif font-bold tracking-tight leading-[0.95] mb-8 md:mb-10 max-w-4xl">
+            <h2 className="text-[2rem] sm:text-[2.5rem] md:text-[3.5rem] font-serif font-bold tracking-tight leading-[0.95] mb-6 md:mb-8 max-w-4xl">
               An AI-driven financial auditor that bypasses intentional corporate complexity.
             </h2>
-            <div className="flex flex-col md:flex-row gap-6 md:gap-12 items-start">
-              <p className="text-base md:text-xl font-body leading-relaxed max-w-2xl text-ink/80">
-                SubDetox shifts the power dynamic from corporations back to the individual, compressing hours of frustration into a single moment of clarity — giving consumers absolute, unambiguous control over every recurring payment.
-              </p>
-              <div className="flex flex-col gap-3 flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-accent-sage rounded-full flex items-center justify-center border-print"><ScanSearch size={20} strokeWidth={1.5} /></div>
-                  <span className="font-serif font-bold text-sm">Expose</span>
+            <p className="text-base md:text-xl font-body leading-relaxed max-w-3xl text-ink/80 mb-10 md:mb-14">
+              SubDetox shifts the power dynamic from corporations back to the individual, compressing hours of frustration into a single moment of clarity — giving consumers absolute, unambiguous control over every recurring payment.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
+              <div className="border-print p-6 md:p-8 bg-accent-sage/10 group hover:bg-accent-sage/20 transition-colors">
+                <div className="w-14 h-14 bg-accent-sage rounded-full flex items-center justify-center border-print mb-5">
+                  <ScanSearch size={28} strokeWidth={1.5} />
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-paper rounded-full flex items-center justify-center border-print"><ShieldCheck size={20} strokeWidth={1.5} /></div>
-                  <span className="font-serif font-bold text-sm">Decide</span>
+                <h3 className="text-lg md:text-xl font-serif font-bold mb-2">Expose</h3>
+                <p className="font-body text-[13px] md:text-[14px] leading-relaxed text-ink/70">
+                  Minimal dashboard shows exactly where money leaks — no clutter, no confusion.
+                </p>
+              </div>
+              <div className="border-print p-6 md:p-8 bg-paper group hover:bg-accent-sage/10 transition-colors">
+                <div className="w-14 h-14 bg-paper rounded-full flex items-center justify-center border-print mb-5">
+                  <ShieldCheck size={28} strokeWidth={1.5} />
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-ink text-paper rounded-full flex items-center justify-center border-print"><Zap size={20} strokeWidth={1.5} /></div>
-                  <span className="font-serif font-bold text-sm">Revoke</span>
+                <h3 className="text-lg md:text-xl font-serif font-bold mb-2">Decide</h3>
+                <p className="font-body text-[13px] md:text-[14px] leading-relaxed text-ink/70">
+                  Review each subscription with full context: cost, frequency, last used, and risk score.
+                </p>
+              </div>
+              <div className="border-print p-6 md:p-8 bg-ink text-paper group hover:bg-ink/90 transition-colors">
+                <div className="w-14 h-14 bg-paper text-ink rounded-full flex items-center justify-center border-print mb-5">
+                  <Zap size={28} strokeWidth={1.5} />
                 </div>
+                <h3 className="text-lg md:text-xl font-serif font-bold mb-2">Revoke</h3>
+                <p className="font-body text-[13px] md:text-[14px] leading-relaxed text-paper/70">
+                  One button kills UPI/e-NACH mandates via bank APIs or fires legally binding cancellation emails.
+                </p>
               </div>
             </div>
           </section>
@@ -422,6 +436,36 @@ function App() {
             </div>
           </section>
 
+          {/* ── SIMULATION DISCLAIMER ────────────── */}
+          <section className="px-5 md:px-16 lg:px-24 py-14 md:py-16 border-print-b">
+            <div className="border-print p-6 md:p-10 bg-paper relative">
+              <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start">
+                <div className="flex-shrink-0">
+                  <div className="w-16 h-16 bg-accent-sage rounded-full flex items-center justify-center border-print">
+                    <Shield size={32} strokeWidth={1.5} />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-bold tracking-[0.25em] uppercase text-ink/50 mb-2">Important Note</p>
+                  <h3 className="text-xl md:text-2xl font-serif font-bold mb-4">Simulated API Layer — RBI Account Aggregator & FIU Setu</h3>
+                  <p className="font-body text-[13px] md:text-[15px] leading-relaxed text-ink/80 mb-4">
+                    This demo uses a <strong>simulated API layer</strong> that mirrors India's RBI-regulated <strong>Account Aggregator (AA) framework</strong> and <strong>Setu FIU integration</strong>. We faithfully replicate real consent flows, FI session lifecycles, and encrypted data-fetch payloads — proving the complete product experience without touching live banking rails.
+                  </p>
+                  <p className="font-body text-[13px] md:text-[15px] leading-relaxed text-ink/80 mb-5">
+                    Going live requires formal <strong>RBI FIU licensing</strong>, <strong>Sahamati certification</strong>, TSP partner onboarding with providers like Setu, mandatory security audits, and individual bank approvals. Our architecture is designed for a direct swap to production AA/Setu APIs once approvals are obtained.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 border-print text-[11px] md:text-xs font-bold tracking-wide uppercase bg-[#fafaf6]">AA Consent Flow</span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 border-print text-[11px] md:text-xs font-bold tracking-wide uppercase bg-[#fafaf6]">FI Session Lifecycle</span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 border-print text-[11px] md:text-xs font-bold tracking-wide uppercase bg-[#fafaf6]">Setu Sandbox</span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 border-print text-[11px] md:text-xs font-bold tracking-wide uppercase bg-[#fafaf6]">Firebase Auth</span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 border-print text-[11px] md:text-xs font-bold tracking-wide uppercase bg-[#fafaf6]">ReBIT API Spec</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* ── IMPACT — Stat Strip ──────────────── */}
           <div className="border-print-b flex flex-col md:flex-row divide-y-[1.5px] md:divide-y-0 md:divide-x-[1.5px] divide-ink border-ink">
             <div className="flex-1 py-10 md:py-14 flex flex-col items-center justify-center relative px-4">
@@ -460,28 +504,34 @@ function App() {
           <section className="px-5 md:px-16 lg:px-24 py-16 md:py-20 border-print-b">
             <p className="text-xs font-bold tracking-[0.25em] uppercase text-ink/50 mb-2">Target Audience</p>
             <h2 className="text-[2rem] sm:text-[2.5rem] md:text-[3.5rem] font-serif font-bold tracking-tight leading-[0.95] mb-10 md:mb-14">Who Benefits?</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 max-w-3xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
               <div className="border-print p-6 md:p-8 bg-paper relative group hover:bg-accent-sage/10 transition-colors">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-ink text-paper rounded-full flex items-center justify-center border-print">
-                    <Smartphone size={24} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="text-lg md:text-xl font-serif font-bold">Gen Z & Millennials</h3>
+                <div className="w-14 h-14 bg-ink text-paper rounded-full flex items-center justify-center border-print mb-5">
+                  <Smartphone size={28} strokeWidth={1.5} />
                 </div>
-                <p className="font-body text-[13px] md:text-[14px] leading-relaxed text-ink/70">
+                <h3 className="text-lg md:text-xl font-serif font-bold mb-3">Gen Z & Millennials</h3>
+                <p className="font-body text-[13px] md:text-[14px] leading-relaxed text-ink/70 mb-4">
                   Urban and semi-urban middle class suffering from subscription fatigue — subscribed to everything, tracking nothing.
                 </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 border-print text-[10px] md:text-[11px] font-bold tracking-wide uppercase bg-[#fafaf6]">OTT Overload</span>
+                  <span className="px-2.5 py-1 border-print text-[10px] md:text-[11px] font-bold tracking-wide uppercase bg-[#fafaf6]">UPI Autopay</span>
+                  <span className="px-2.5 py-1 border-print text-[10px] md:text-[11px] font-bold tracking-wide uppercase bg-[#fafaf6]">App Trials</span>
+                </div>
               </div>
               <div className="border-print p-6 md:p-8 bg-paper relative group hover:bg-accent-sage/10 transition-colors">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-accent-sage rounded-full flex items-center justify-center border-print">
-                    <Users size={24} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="text-lg md:text-xl font-serif font-bold">Gen X & Boomers</h3>
+                <div className="w-14 h-14 bg-accent-sage rounded-full flex items-center justify-center border-print mb-5">
+                  <Users size={28} strokeWidth={1.5} />
                 </div>
-                <p className="font-body text-[13px] md:text-[14px] leading-relaxed text-ink/70">
+                <h3 className="text-lg md:text-xl font-serif font-bold mb-3">Gen X & Boomers</h3>
+                <p className="font-body text-[13px] md:text-[14px] leading-relaxed text-ink/70 mb-4">
                   Older demographics vulnerable to deceptive auto-renewals, lacking the digital literacy to navigate opaque banking interfaces.
                 </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 border-print text-[10px] md:text-[11px] font-bold tracking-wide uppercase bg-[#fafaf6]">Telecom VAS</span>
+                  <span className="px-2.5 py-1 border-print text-[10px] md:text-[11px] font-bold tracking-wide uppercase bg-[#fafaf6]">Hidden Debits</span>
+                  <span className="px-2.5 py-1 border-print text-[10px] md:text-[11px] font-bold tracking-wide uppercase bg-[#fafaf6]">Bank Lock-in</span>
+                </div>
               </div>
             </div>
           </section>
@@ -571,8 +621,8 @@ function App() {
             <a href={LINKS.githubRepo} target="_blank" rel="noreferrer" className="hover:underline flex items-center gap-2">
               <Code size={16} strokeWidth={2.5} /> GitHub
             </a>
-            <a href={LINKS.pptDownload} download className="hover:underline flex items-center gap-2">
-              <Presentation size={16} strokeWidth={2.5} /> Presentation Deck
+            <a href={LINKS.pptDownload} target="_blank" rel="noreferrer" className="hover:underline flex items-center gap-2">
+              <Presentation size={16} strokeWidth={2.5} /> Pitch Deck
             </a>
           </div>
         </footer>
