@@ -7,7 +7,7 @@ import {
 } from './content';
 
 import { motion } from 'framer-motion';
-import { Download, ChevronRight, Github } from 'lucide-react';
+import { Download, ChevronRight, Code } from 'lucide-react';
 import './styles2.css';
 
 const fadeUp = {
@@ -79,7 +79,7 @@ function App() {
                   <ChevronRight size={20} /> View Deck
                 </a>
                 <a className="btn btn-outline" href={LINKS.githubRepo} target="_blank" rel="noreferrer">
-                  <Github size={20} /> View Code
+                  <Code size={20} /> View Code
                 </a>
               </motion.div>
             </motion.div>
