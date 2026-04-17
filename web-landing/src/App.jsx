@@ -222,3 +222,8 @@ function App() {
         </div>
       </footer>
     </>
+
+  );
+}
+
+export default App;
