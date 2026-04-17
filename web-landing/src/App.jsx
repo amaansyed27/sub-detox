@@ -6,245 +6,219 @@ import {
   WORKING_FLOW,
 } from './content';
 
-const ARCHITECTURE_LAYERS = [
-  {
-    title: 'Experience Layer',
-    stack: 'Flutter mobile app + this React web presence',
-    detail:
-      'Users authenticate, link accounts, run scans, and take direct actions in a guided flow.',
-  },
-  {
-    title: 'Intelligence Layer',
-    stack: 'Rules Engine + Gemini augmentation',
-    detail:
-      'Deterministic detection is the source of truth; AI adds explanation and guided assistance.',
-  },
-  {
-    title: 'Service Layer',
-    stack: 'FastAPI + app-compatible APIs',
-    detail:
-      'Account availability, selection, analysis, revoke, chat, ticketing, and request workflows.',
-  },
-  {
-    title: 'Identity + Data Layer',
-    stack: 'Firebase Auth + Firestore',
-    detail:
-      'Secure identity, persistent user state, analysis history, and resolved subscription actions.',
-  },
-  {
-    title: 'Cloud Runtime Layer',
-    stack: 'Cloud Run + Cloud Build',
-    detail:
-      'Containerized backend delivery with repeatable CI/CD and production-ready scaling.',
-  },
-];
+import { motion } from 'framer-motion';
+import { Download, ChevronRight, Github } from 'lucide-react';
+import './styles2.css';
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.2 } }
+};
 
 function App() {
   return (
-    <div className="landing-shell">
-      <div className="bg-orb orb-left" />
-      <div className="bg-orb orb-right" />
-      <div className="grid-overlay" />
+    <>
+      <div className="bg-beams" />
+      <div className="noise" />
 
-      <header className="top-nav container">
-        <div className="brand-block">
+      <header className="container top-nav">
+        <motion.div 
+          className="brand-block"
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+        >
           <div className="brand-logo-wrap">
-            <img
-              className="brand-logo"
-              src="/assets/subdetox-logo.png"
-              alt="SubDetox logo"
-            />
+            <img src="/assets/subdetox-logo.png" alt="SubDetox logo" style={{ width: 48, height: 48 }} />
           </div>
           <div>
             <p className="brand-kicker">Hackathon Build</p>
             <h1 className="brand-title">SubDetox</h1>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="team-chip">
-          <span className="team-logo-wrap">
-            <img
-              className="team-logo"
-              src="/assets/redline-logo.png"
-              alt="Redline logo"
-            />
-          </span>
+        <motion.div 
+          className="team-chip"
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <img src="/assets/redline-logo.png" alt="Redline logo" style={{ width: 32, height: 32 }} />
           <span>Team {TEAM.name}</span>
-        </div>
+        </motion.div>
       </header>
 
       <main>
-        <section className="hero container">
-          <div className="hero-copy">
-            <p className="section-tag">Silent Wealth Leakage Auditor</p>
-            <h2>
-              Detect hidden recurring debits, quantify leakage, and trigger
-              action in one flow.
-            </h2>
-            <p>
-              SubDetox combines deterministic transaction intelligence with
-              resilient AI guidance to help users stop subscription and mandate
-              leakage before it compounds.
-            </p>
+        <section className="section hero">
+          <div className="container hero-content">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={staggerContainer}
+            >
+              <motion.div variants={fadeUp}>
+                <span className="tagline">Silent Wealth Leakage Auditor</span>
+              </motion.div>
+              <motion.h2 variants={fadeUp} className="hero-title">
+                Detect, quantify, and stop subscription leaks.
+              </motion.h2>
+              <motion.p variants={fadeUp} className="hero-subtitle">
+                SubDetox combines deterministic transaction intelligence with resilient AI guidance to help users stop recurring mandates before it compounds.
+              </motion.p>
+              
+              <motion.div variants={fadeUp} className="btn-group">
+                <a className="btn btn-primary" href={LINKS.apkDownload} download>
+                  <Download size={20} /> Get Android APK
+                </a>
+                <a className="btn btn-secondary" href={LINKS.pptDownload} download>
+                  <ChevronRight size={20} /> View Deck
+                </a>
+                <a className="btn btn-outline" href={LINKS.githubRepo} target="_blank" rel="noreferrer">
+                  <Github size={20} /> View Code
+                </a>
+              </motion.div>
+            </motion.div>
 
-            <div className="cta-row">
-              <a className="btn btn-primary" href={LINKS.apkDownload} download>
-                Download Android APK
-              </a>
-              <a className="btn btn-secondary" href={LINKS.pptDownload} download>
-                Download PPT Deck
-              </a>
-              <a
-                className="btn btn-ghost"
-                href={LINKS.githubRepo}
-                target="_blank"
-                rel="noreferrer"
-              >
-                GitHub Repository
-              </a>
-            </div>
-          </div>
-
-          <div className="hero-panel">
-            <p className="metric-label">Demo Snapshot</p>
-            <div className="metrics-grid">
-              <article>
-                <h3>33</h3>
-                <p>Transactions Scanned</p>
-              </article>
-              <article>
-                <h3>4</h3>
-                <p>Active Risks</p>
-              </article>
-              <article>
-                <h3>₹2,390</h3>
-                <p>Potential Monthly Leakage</p>
-              </article>
-            </div>
-            <small>
-              Sample from one run. Values vary by user transaction behavior.
-            </small>
+            <motion.div 
+              className="glass-panel"
+              style={{ marginTop: 80 }}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+            >
+              <h3 style={{ color: 'var(--muted)', textAlign: 'left', marginBottom: 10 }}>Live Demo Metrics</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 20 }}>
+                <div style={{ padding: 20 }}>
+                  <h4 style={{ fontSize: 36, color: 'var(--mint)' }}>33</h4>
+                  <p style={{ color: 'var(--muted)', fontSize: 14 }}>Transactions Scanned</p>
+                </div>
+                <div style={{ padding: 20 }}>
+                  <h4 style={{ fontSize: 36, color: '#f87171' }}>4</h4>
+                  <p style={{ color: 'var(--muted)', fontSize: 14 }}>Active Risks</p>
+                </div>
+                <div style={{ padding: 20 }}>
+                  <h4 style={{ fontSize: 36, color: '#fff' }}>₹2,390</h4>
+                  <p style={{ color: 'var(--muted)', fontSize: 14 }}>Monthly Leakage Detected</p>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </section>
 
-        <section className="pillars container">
-          {CORE_PILLARS.map((pillar) => (
-            <article key={pillar.title} className="glass-card">
-              <h3>{pillar.title}</h3>
-              <p>{pillar.detail}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="architecture container">
+        <section className="section container">
           <div className="section-head">
-            <p className="section-tag">Full Working Architecture</p>
-            <h3>From onboarding to automated remediation support.</h3>
+            <h2>Core Pillars</h2>
+            <p style={{ color: 'var(--muted)' }}>Intelligence without the compromise.</p>
           </div>
-
-          <div className="architecture-layout">
-            <div className="layer-list">
-              {ARCHITECTURE_LAYERS.map((layer) => (
-                <article key={layer.title} className="layer-card">
-                  <h4>{layer.title}</h4>
-                  <p className="stack-line">{layer.stack}</p>
-                  <p>{layer.detail}</p>
-                </article>
-              ))}
-            </div>
-
-            <div className="flow-card">
-              <h4>Working Flow</h4>
-              <ol>
-                {WORKING_FLOW.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ol>
-              <a
-                href={LINKS.architectureDoc}
-                target="_blank"
-                rel="noreferrer"
-              >
-                View detailed architecture document
-              </a>
-            </div>
-          </div>
+          <motion.div 
+            className="grid-3"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {CORE_PILLARS.map((pillar) => (
+              <motion.div key={pillar.title} variants={fadeUp} className="feature-box">
+                <h3 style={{ marginBottom: '10px', color: '#fff' }}>{pillar.title}</h3>
+                <p style={{ color: 'var(--muted)' }}>{pillar.detail}</p>
+              </motion.div>
+            ))}
+          </motion.div>
         </section>
 
-        <section className="stack container">
+        <section className="section container">
           <div className="section-head">
-            <p className="section-tag">Tech Stack</p>
-            <h3>Production-minded choices for a hackathon MVP with depth.</h3>
+            <h2>Architecture Stack</h2>
+            <p style={{ color: 'var(--muted)' }}>A robust pyramid covering mobile, intelligent backend, data, and cloud layers.</p>
           </div>
-          <div className="stack-grid">
-            {Object.entries(TECH_STACK).map(([area, items]) => (
-              <article key={area} className="stack-card">
-                <h4>{area.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                <ul>
-                  {items.map((item) => (
-                    <li key={item}>{item}</li>
+          
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'center' }}>
+            <motion.div 
+              className="pyramid-container" 
+              style={{ flex: '1 1 500px' }}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={staggerContainer}
+            >
+              <motion.div variants={fadeUp} className="pyramid-layer top">
+                <div className="layer-title">Experience Layer</div>
+                <div className="layer-stack">Flutter | React + Vite</div>
+                <div className="layer-desc">Guided mobile flow & web presence.</div>
+              </motion.div>
+
+              <motion.div variants={fadeUp} className="pyramid-layer middle">
+                <div className="layer-title">Intelligence & Services</div>
+                <div className="layer-stack">FastAPI | Gemini AI | Rules Engine</div>
+                <div className="layer-desc">Deterministic detection paired with Gen AI reasoning.</div>
+              </motion.div>
+
+              <motion.div variants={fadeUp} className="pyramid-layer bottom">
+                <div className="layer-title">Data & Cloud Runtime</div>
+                <div className="layer-stack">Firebase Auth & Firestore | Google Cloud Run</div>
+                <div className="layer-desc">Secure identity, state persistence, and auto-scaling containers.</div>
+              </motion.div>
+            </motion.div>
+            
+            <motion.div 
+              style={{ flex: '1 1 300px' }}
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="glass-panel" style={{ padding: 30, height: '100%' }}>
+                <h3 style={{ marginBottom: 20, color: 'var(--mint)' }}>Working Flow</h3>
+                <ul className="flow-list">
+                  {WORKING_FLOW.map((step, i) => (
+                    <li key={i} className="flow-item">
+                      <span className="flow-num">{i + 1}</span>
+                      <span style={{ fontSize: 14 }}>{step}</span>
+                    </li>
                   ))}
                 </ul>
-              </article>
-            ))}
+              </div>
+            </motion.div>
           </div>
         </section>
 
-        <section className="video container">
+        <section className="section container">
           <div className="section-head">
-            <p className="section-tag">Walkthrough</p>
-            <h3>Embed your full product demo video here.</h3>
+            <h2>Demo Walkthrough</h2>
+            <p style={{ color: 'var(--muted)' }}>See SubDetox in action from end to end.</p>
           </div>
-          <div className="video-frame">
+          <motion.div 
+            className="video-frame"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             <iframe
               src={LINKS.youtubeEmbed}
               title="SubDetox full walkthrough"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />
-          </div>
-          <p className="note-text">
-            Replace the YouTube embed URL in src/content.js with your final demo
-            walkthrough link before publishing.
-          </p>
-        </section>
-
-        <section className="team container">
-          <div className="team-card">
-            <img
-              className="team-logo-large"
-              src="/assets/redline-logo.png"
-              alt="Redline"
-            />
-            <div>
-              <p className="section-tag">Built By</p>
-              <h3>Team {TEAM.name}</h3>
-              <ul>
-                {TEAM.members.map((member) => (
-                  <li key={member}>{member}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          </motion.div>
         </section>
       </main>
 
-      <footer className="container footer-row">
+      <footer className="footer container">
         <p>SubDetox © {new Date().getFullYear()} · Team {TEAM.name}</p>
         <div className="footer-links">
-          <a href={LINKS.githubRepo} target="_blank" rel="noreferrer">
-            GitHub
-          </a>
-          <a href={LINKS.pptDownload} download>
-            PPT Deck
-          </a>
-          <a href={LINKS.apkDownload} download>
-            Android APK
-          </a>
+            <a href={LINKS.githubRepo} target="_blank" rel="noreferrer">
+              GitHub Repository
+            </a>
+            <a href={LINKS.pptDownload} download>
+              Presentation Deck
+            </a>
         </div>
       </footer>
-    </div>
-  );
-}
-
-export default App;
+    </>
